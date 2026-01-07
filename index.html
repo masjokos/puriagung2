@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Si-Warga Digital RW 06</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        [x-cloak] { display: none !important; }
+        body { 
+            background: #f8fafc; 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            color: #1e293b;
+        }
+        .loading-overlay { 
+            background: rgba(255,255,255,0.9); 
+            backdrop-filter: blur(4px);
+            position: fixed; inset: 0; z-index: 999; 
+            display: flex; align-items: center; justify-content: center; 
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .modern-shadow {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -4px rgba(0, 0, 0, 0.02);
+        }
+        .chart-wrapper { position: relative; height: 260px; width: 100%; }
+        
+        @media (max-width: 768px) {
+            .main-content { padding-bottom: 80px; }
+            .mobile-nav { 
+                position: fixed; bottom: 0; left: 0; right: 0; 
+                z-index: 50; background: white; 
+                box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+            }
+        }
+    </style>
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbz3qxTEDd47HifJz4bBQaRELeavO00j8-paFtgP3CeqId5DcAHTZeTZy3SQYAzwmEV1MQ/exec";
+
+        function appData() {
+            return {
+                isLoggedIn: false,
+                isLoading: false,
+                view: 'dashboard',
+                search: '',
+                isAlamatSama: false,
+                isEditMode: false,
+                showDetailModal: false,
+                showKKModal: false,
+                selectedWarga: null,
+                selectedKKMembers: [],
+                userProfile: { username: '', role: '' },
+                loginForm: { username: '', password: '' },
+                stats: { total: 0, male: 0, female: 0, contract: 0, kepalaKeluarga: 0 },
+                wargaList: [],
+                charts: { rt: null, agama: null },
+                
+                listBlok: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+                listPekerjaan: [
+                    'Belum/Tidak Bekerja', 'Pelajar/Mahasiswa', 'Ibu Rumah Tangga',
+                    'Karyawan Swasta', 'PNS/ASN', 'Wiraswasta', 'Buruh Harian Lepas',
+                    'TNI/POLRI', 'Pensiunan', 'Tenaga Medis', 'Lainnya'
+                ],
+
+                form: {
+                    nik: '', no_kk: '', nama: '', kelamin: 'Laki-Laki', agama: 'Islam',
+                    tempat_lahir: '', tanggal_lahir: '', status_perkawinan: 'Belum Kawin',
+                    status_tinggal: 'Tetap', blok: 'A', nomer: '', rt: '1',
+                    alamat_ktp: '', alamat_tinggal: '', status_keluarga: 'Kepala Keluarga',
+                    no_hp: '', pekerjaan: 'Belum/Tidak Bekerja', foto: ''
+                },
+
+                async initApp() {
+                    const savedUser = localStorage.getItem('user_session');
+                    if (savedUser) {
+                        this.userProfile = JSON.parse(savedUser);
+                        this.isLoggedIn = true;
+                        this.syncData();
+                    }
+                },
+
+                handleFileUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.form.foto = e.target.result.split(',')[1];
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                updateAlamatOtomatis() {
+                    const alamatBaru = `RT ${this.form.rt} Blok ${this.form.blok} No ${this.form.nomer}`;
+                    this.form.alamat_tinggal = alamatBaru;
+                    if (this.isAlamatSama) this.form.alamat_ktp = alamatBaru;
+                },
+
+                lihatDetail(nik) {
+                    const warga = this.wargaList.find(w => String(w.NIK) === String(nik));
+                    if (warga) {
+                        this.selectedWarga = warga;
+                        this.showDetailModal = true;
+                    }
+                },
+
+                lihatKeluarga(noKK) {
+                    const kk = String(noKK);
+                    this.selectedKKMembers = this.wargaList.filter(w => String(w.NoKK) === kk);
+                    const kepala = this.selectedKKMembers.find(w => w.StatusKeluarga === 'Kepala Keluarga');
+                    this.selectedWarga = kepala || this.selectedKKMembers[0];
+                    this.showKKModal = true;
+                },
+                
+                editWarga(nik) {
+                    const data = this.wargaList.find(w => String(w.NIK) === String(nik));
+                    if (data) {
+                        this.form = {
+                            nik: String(data.NIK), no_kk: String(data.NoKK), nama: data.Nama, kelamin: data.Kelamin, 
+                            agama: data.Agama, tempat_lahir: data.TempatLahir,
+                            tanggal_lahir: data.TanggalLahir ? new Date(data.TanggalLahir).toISOString().split('T')[0] : '',
+                            status_perkawinan: data.StatusPerkawinan, status_tinggal: data.StatusTinggal,
+                            blok: data.Blok, nomer: data.Nomer, rt: data.RT, alamat_ktp: data.AlamatKTP,
+                            alamat_tinggal: data.AlamatTinggal, status_keluarga: data.StatusKeluarga,
+                            no_hp: String(data.NoHP), pekerjaan: data.Pekerjaan, foto: data.Foto
+                        };
+                        this.isEditMode = true;
+                        this.view = 'tambah';
+                    }
+                },
+
+                async hapusWarga(nik) {
+                    if(confirm(`Hapus data NIK: ${nik}?`)) {
+                        this.isLoading = true;
+                        try {
+                            await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'deleteWarga', nik: String(nik) }) });
+                            setTimeout(() => this.syncData(), 1000);
+                        } finally { this.isLoading = false; }
+                    }
+                },
+
+                async syncData() {
+                    this.isLoading = true;
+                    try {
+                        const res = await fetch(`${API_URL}?action=getWarga&t=${new Date().getTime()}`);
+                        const data = await res.json();
+                        this.wargaList = data.map(w => ({
+                            NIK: String(w.NIK || w.nik || ''),
+                            Nama: w.Nama || w.nama || '',
+                            Kelamin: w['Jenis Kelamin'] || w.Kelamin || w.kelamin || '',
+                            RT: String(w.RT || w.rt || '1'),
+                            Blok: w.Blok || w.blok || '',
+                            Nomer: String(w.Nomer || w.nomer || w.Nomor || ''),
+                            StatusTinggal: w['Status Tinggal'] || w.status_tinggal || '',
+                            Pekerjaan: w.Pekerjaan || w.pekerjaan || '',
+                            Foto: w.Foto || w.foto || '',
+                            Agama: w.Agama || '',
+                            TempatLahir: w['Tempat Lahir'] || '',
+                            TanggalLahir: w['Tanggal Lahir'] || '',
+                            StatusPerkawinan: w['Status Perkawinan'] || '',
+                            StatusKeluarga: w['Status Keluarga'] || '',
+                            AlamatTinggal: w['Alamat Tinggal'] || '',
+                            AlamatKTP: w['Alamat KTP'] || '',
+                            NoHP: String(w['NO HP'] || ''),
+                            NoKK: String(w['NO KK'] || w.no_kk || '')
+                        }));
+                        this.calculateStats();
+                        if(this.view === 'dashboard') this.updateCharts();
+                    } catch (e) { console.error(e); } finally { this.isLoading = false; }
+                },
+
+                calculateStats() {
+                    this.stats.total = this.wargaList.length;
+                    this.stats.male = this.wargaList.filter(w => String(w.Kelamin).toLowerCase().includes('laki')).length;
+                    this.stats.female = this.wargaList.filter(w => String(w.Kelamin).toLowerCase().includes('perem')).length;
+                    this.stats.contract = this.wargaList.filter(w => String(w.StatusTinggal).toLowerCase() !== 'tetap').length;
+                    this.stats.kepalaKeluarga = this.wargaList.filter(w => w.StatusKeluarga === 'Kepala Keluarga').length;
+                },
+
+                updateCharts() {
+                    this.$nextTick(() => {
+                        const rtGroups = { '1':0, '2':0, '3':0, '4':0 };
+                        this.wargaList.forEach(w => { if(rtGroups[w.RT] !== undefined) rtGroups[w.RT]++; });
+                        const agamaGroups = {};
+                        this.wargaList.forEach(w => { const ag = w.Agama || 'Lainnya'; agamaGroups[ag] = (agamaGroups[ag] || 0) + 1; });
+
+                        if (this.charts.rt) this.charts.rt.destroy();
+                        const ctxRt = document.getElementById('chartRT')?.getContext('2d');
+                        if (ctxRt) {
+                            this.charts.rt = new Chart(ctxRt, {
+                                type: 'bar',
+                                data: {
+                                    labels: ['RT 01', 'RT 02', 'RT 03', 'RT 04'],
+                                    datasets: [{ label: 'Warga', data: Object.values(rtGroups), backgroundColor: '#3b82f6', borderRadius: 6 }]
+                                },
+                                options: { 
+                                    responsive: true, maintainAspectRatio: false, 
+                                    plugins: { legend: { display: false } },
+                                    scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+                                }
+                            });
+                        }
+
+                        if (this.charts.agama) this.charts.agama.destroy();
+                        const ctxAgama = document.getElementById('chartAgama')?.getContext('2d');
+                        if (ctxAgama) {
+                            this.charts.agama = new Chart(ctxAgama, {
+                                type: 'doughnut',
+                                data: {
+                                    labels: Object.keys(agamaGroups),
+                                    datasets: [{ data: Object.values(agamaGroups), backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }]
+                                },
+                                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                            });
+                        }
+                    });
+                },
+
+                async handleLogin() {
+                    this.isLoading = true;
+                    try {
+                        const res = await fetch(`${API_URL}?action=getUsers&t=${new Date().getTime()}`);
+                        const users = await res.json();
+                        const found = users.find(u => u.username === this.loginForm.username && String(u.password) === String(this.loginForm.password));
+                        if (found) {
+                            this.userProfile = { username: found.username, role: found.role || 'User' };
+                            this.isLoggedIn = true;
+                            localStorage.setItem('user_session', JSON.stringify(this.userProfile));
+                            this.syncData();
+                        } else { alert("Login Gagal!"); }
+                    } finally { this.isLoading = false; }
+                },
+
+                handleLogout() {
+                    this.isLoggedIn = false;
+                    localStorage.removeItem('user_session');
+                },
+
+                async saveWarga() {
+                    this.isLoading = true;
+                    const payload = { ...this.form };
+                    const formData = { action: this.isEditMode ? 'editWarga' : 'addWarga', nik: String(this.form.nik), payload };
+                    try {
+                        await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(formData) });
+                        alert("Data Berhasil Disimpan!");
+                        this.view = 'data';
+                        setTimeout(() => this.syncData(), 1500);
+                        this.resetForm();
+                    } finally { this.isLoading = false; }
+                },
+
+                resetForm() {
+                    this.isEditMode = false;
+                    this.form = {
+                        nik: '', no_kk: '', nama: '', kelamin: 'Laki-Laki', agama: 'Islam',
+                        tempat_lahir: '', tanggal_lahir: '', status_perkawinan: 'Belum Kawin',
+                        status_tinggal: 'Tetap', blok: 'A', nomer: '', rt: '1',
+                        alamat_ktp: '', alamat_tinggal: '', status_keluarga: 'Kepala Keluarga',
+                        no_hp: '', pekerjaan: 'Belum/Tidak Bekerja', foto: ''
+                    };
+                }
+            };
+        }
+    </script>
+</head>
+<body x-data="appData()" x-init="initApp()">
+
+    <!-- Loading Overlay -->
+    <div x-show="isLoading" class="loading-overlay" x-cloak>
+        <div class="flex flex-col items-center">
+            <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p class="mt-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Memproses Data...</p>
+        </div>
+    </div>
+
+    <!-- Modal Detail Warga (Profil Lengkap) -->
+    <template x-if="showDetailModal">
+        <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="showDetailModal = false">
+            <div class="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div class="p-6 flex justify-between items-center border-b bg-slate-50">
+                    <h3 class="font-bold text-slate-800">Profil Lengkap Warga</h3>
+                    <button @click="showDetailModal = false" class="w-10 h-10 flex items-center justify-center bg-white rounded-full text-slate-400 hover:text-rose-500 shadow-sm">&times;</button>
+                </div>
+                <div class="p-8 max-h-[85vh] overflow-y-auto">
+                    <div class="flex flex-col md:flex-row items-center gap-6 mb-8">
+                        <img :src="selectedWarga.Foto && selectedWarga.Foto.length > 100 ? 'data:image/png;base64,' + selectedWarga.Foto : 'https://ui-avatars.com/api/?background=random&name='+selectedWarga.Nama" class="w-24 h-24 md:w-32 md:h-32 rounded-[2rem] object-cover shadow-xl border-4 border-white">
+                        <div class="text-center md:text-left">
+                            <h4 class="text-2xl font-extrabold text-slate-800" x-text="selectedWarga.Nama"></h4>
+                            <p class="text-blue-600 font-bold tracking-wider" x-text="selectedWarga.NIK"></p>
+                            <span class="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-700 text-[10px] font-black rounded-full uppercase" x-text="selectedWarga.StatusTinggal"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                        <div class="p-3 bg-slate-50 rounded-2xl">
+                            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Nomor KK</p>
+                            <p class="font-bold text-slate-700" x-text="selectedWarga.NoKK"></p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-2xl">
+                            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Jenis Kelamin</p>
+                            <p class="font-bold text-slate-700" x-text="selectedWarga.Kelamin"></p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-2xl">
+                            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Tempat, Tgl Lahir</p>
+                            <p class="font-bold text-slate-700" x-text="`${selectedWarga.TempatLahir}, ${selectedWarga.TanggalLahir ? new Date(selectedWarga.TanggalLahir).toLocaleDateString('id-ID') : '-'}`"></p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-2xl">
+                            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Agama</p>
+                            <p class="font-bold text-slate-700" x-text="selectedWarga.Agama"></p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-2xl">
+                            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Status Perkawinan</p>
+                            <p class="font-bold text-slate-700" x-text="selectedWarga.StatusPerkawinan"></p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-2xl">
+                            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Pekerjaan</p>
+                            <p class="font-bold text-slate-700" x-text="selectedWarga.Pekerjaan"></p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-2xl">
+                            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Status Keluarga</p>
+                            <p class="font-bold text-slate-700" x-text="selectedWarga.StatusKeluarga"></p>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-2xl">
+                            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">No. HP</p>
+                            <p class="font-bold text-slate-700" x-text="selectedWarga.NoHP || '-'"></p>
+                        </div>
+                        <div class="col-span-full p-3 bg-slate-50 rounded-2xl">
+                            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Alamat Domisili (RW 06)</p>
+                            <p class="font-bold text-slate-700" x-text="selectedWarga.AlamatTinggal"></p>
+                        </div>
+                        <div class="col-span-full p-3 bg-slate-50 rounded-2xl">
+                            <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Alamat Asal (Sesuai KTP)</p>
+                            <p class="font-bold text-slate-700" x-text="selectedWarga.AlamatKTP"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Modal Anggota KK -->
+    <template x-if="showKKModal">
+        <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="showKKModal = false">
+            <div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden">
+                <div class="p-6 border-b bg-slate-50 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-slate-800">Daftar Anggota Keluarga</h3>
+                        <p class="text-xs text-slate-400 font-medium" x-text="'No KK: ' + selectedWarga.NoKK"></p>
+                    </div>
+                    <button @click="showKKModal = false" class="w-10 h-10 flex items-center justify-center bg-white rounded-full text-slate-400 hover:text-rose-500 shadow-sm">&times;</button>
+                </div>
+                <div class="p-6 max-h-[70vh] overflow-y-auto">
+                    <div class="space-y-3">
+                        <template x-for="m in selectedKKMembers">
+                            <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-lg shadow-sm" x-text="m.StatusKeluarga === 'Kepala Keluarga' ? '👨‍💼' : '👥'"></div>
+                                    <div>
+                                        <p class="font-bold text-slate-700" x-text="m.Nama"></p>
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider" x-text="m.StatusKeluarga + ' • ' + m.NIK"></p>
+                                    </div>
+                                </div>
+                                <button @click="lihatDetail(m.NIK); showKKModal = false" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition">👁️</button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Login Page -->
+    <div x-show="!isLoggedIn" class="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+        <div class="bg-white p-8 md:p-12 rounded-[3rem] shadow-xl w-full max-w-md border border-slate-100">
+            <div class="text-center mb-10">
+                <div class="w-20 h-20 bg-blue-600 rounded-[2rem] mx-auto flex items-center justify-center text-white text-3xl mb-6 font-black shadow-2xl shadow-blue-200">W</div>
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Si-Warga Digital</h1>
+                <p class="text-slate-400 text-sm mt-2 font-medium">Panel Administrasi RW 06</p>
+            </div>
+            <form @submit.prevent="handleLogin" class="space-y-5">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase px-2">Username</label>
+                    <input type="text" x-model="loginForm.username" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10" placeholder="admin_rw06" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase px-2">Password</label>
+                    <input type="password" x-model="loginForm.password" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-100">Masuk Aplikasi</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Shell -->
+    <div x-show="isLoggedIn" x-cloak class="min-h-screen flex flex-col md:flex-row">
+        
+        <!-- Sidebar -->
+        <aside class="hidden md:flex w-72 bg-white border-r border-slate-100 flex-col p-8 shrink-0">
+            <div class="flex items-center gap-3 mb-12">
+                <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-100">W</div>
+                <div class="font-extrabold text-lg tracking-tighter text-slate-800 leading-none">RW 06<br><span class="text-[10px] text-blue-500 font-black uppercase">Digital Office</span></div>
+            </div>
+            <nav class="flex-1 space-y-2">
+                <button @click="view = 'dashboard'; updateCharts()" class="w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all" :class="view === 'dashboard' ? 'bg-blue-600 text-white shadow-xl shadow-blue-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'">
+                    <span class="text-xl">📊</span> Dashboard
+                </button>
+                <button @click="view = 'kk'" class="w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all" :class="view === 'kk' ? 'bg-blue-600 text-white shadow-xl shadow-blue-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'">
+                    <span class="text-xl">🏠</span> Kartu Keluarga
+                </button>
+                <button @click="view = 'data'" class="w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all" :class="view === 'data' ? 'bg-blue-600 text-white shadow-xl shadow-blue-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'">
+                    <span class="text-xl">👥</span> Data Warga
+                </button>
+                <button @click="view = 'tambah'; resetForm()" class="w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all" :class="view === 'tambah' ? 'bg-blue-600 text-white shadow-xl shadow-blue-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'">
+                    <span class="text-xl">➕</span> Tambah Data
+                </button>
+            </nav>
+            <div class="pt-8 border-t border-slate-100">
+                <div class="flex items-center gap-3 mb-6 px-2">
+                    <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 font-bold uppercase" x-text="userProfile.username[0]"></div>
+                    <div class="overflow-hidden">
+                        <p class="text-xs font-black text-slate-700 truncate" x-text="userProfile.username"></p>
+                        <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest" x-text="userProfile.role"></p>
+                    </div>
+                </div>
+                <button @click="handleLogout" class="w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold text-rose-500 hover:bg-rose-50 transition-all">
+                    <span>🚪</span> Log Out
+                </button>
+            </div>
+        </aside>
+
+        <!-- Mobile Nav -->
+        <nav class="mobile-nav md:hidden flex justify-around items-center p-3 border-t bg-white">
+            <button @click="view = 'dashboard'; updateCharts()" class="flex flex-col items-center p-2" :class="view === 'dashboard' ? 'text-blue-600' : 'text-slate-300'">
+                <span class="text-2xl">📊</span><span class="text-[9px] font-black mt-1">HOME</span>
+            </button>
+            <button @click="view = 'kk'" class="flex flex-col items-center p-2" :class="view === 'kk' ? 'text-blue-600' : 'text-slate-300'">
+                <span class="text-2xl">🏠</span><span class="text-[9px] font-black mt-1">KK</span>
+            </button>
+            <button @click="view = 'tambah'; resetForm()" class="flex flex-col items-center -mt-8">
+                <div class="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-blue-200 border-4 border-white text-2xl">➕</div>
+            </button>
+            <button @click="view = 'data'" class="flex flex-col items-center p-2" :class="view === 'data' ? 'text-blue-600' : 'text-slate-300'">
+                <span class="text-2xl">👥</span><span class="text-[9px] font-black mt-1">WARGA</span>
+            </button>
+            <button @click="handleLogout" class="flex flex-col items-center p-2 text-slate-300">
+                <span class="text-2xl">🚪</span><span class="text-[9px] font-black mt-1">OUT</span>
+            </button>
+        </nav>
+
+        <!-- Main Workspace -->
+        <main class="main-content flex-1 p-4 md:p-12 overflow-x-hidden">
+            
+            <!-- Dashboard View -->
+            <div x-show="view === 'dashboard'">
+                <div class="mb-10">
+                    <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Overview Statistik</h1>
+                    <p class="text-slate-400 font-medium">Data terkini kependudukan wilayah RW 06.</p>
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
+                    <div class="bg-white p-6 rounded-[2.5rem] modern-shadow border border-slate-50">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Jiwa</p>
+                        <div class="flex items-end gap-2">
+                            <span class="text-4xl font-black text-slate-800" x-text="stats.total"></span>
+                            <span class="text-xs text-slate-400 font-bold mb-1.5 uppercase">Warga</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-[2.5rem] modern-shadow border border-slate-50">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Kepala Keluarga</p>
+                        <div class="flex items-end gap-2">
+                            <span class="text-4xl font-black text-indigo-600" x-text="stats.kepalaKeluarga"></span>
+                            <span class="text-xs text-slate-400 font-bold mb-1.5 uppercase">Rumah</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-[2.5rem] modern-shadow border border-slate-50">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Laki-Laki</p>
+                        <div class="flex items-end gap-2">
+                            <span class="text-4xl font-black text-blue-500" x-text="stats.male"></span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-[2.5rem] modern-shadow border border-slate-50">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Perempuan</p>
+                        <div class="flex items-end gap-2">
+                            <span class="text-4xl font-black text-pink-500" x-text="stats.female"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+                    <div class="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                        <h3 class="font-black text-slate-800 mb-6 uppercase tracking-wider text-xs">Populasi Per RT</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="chartRT"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                        <h3 class="font-black text-slate-800 mb-6 uppercase tracking-wider text-xs">Agama</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="chartAgama"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- List Data View (Warga / KK) -->
+            <div x-show="view === 'data' || view === 'kk'">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight" x-text="view === 'kk' ? 'Manajemen KK' : 'Direktori Warga'"></h1>
+                        <p class="text-slate-400 font-medium" x-text="view === 'kk' ? 'Pencarian data berdasarkan No KK atau Kepala Keluarga.' : 'Daftar seluruh warga terregistrasi di RW 06.'"></p>
+                    </div>
+                    <div class="relative">
+                        <input type="text" x-model="search" placeholder="Cari Nama/NIK/KK..." class="w-full md:w-96 p-4 pl-12 bg-white border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/5 shadow-sm transition-all font-medium">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-xl opacity-30">🔍</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50">
+                                <tr x-show="view === 'kk'">
+                                    <th class="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kepala Keluarga</th>
+                                    <th class="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nomor KK</th>
+                                    <th class="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Alamat Domisili</th>
+                                    <th class="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>
+                                </tr>
+                                <tr x-show="view === 'data'">
+                                    <th class="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Warga</th>
+                                    <th class="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Identitas</th>
+                                    <th class="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Lokasi</th>
+                                    <th class="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                <template x-if="view === 'kk'">
+                                    <template x-for="w in wargaList.filter(i => i.StatusKeluarga === 'Kepala Keluarga' && (i.Nama.toLowerCase().includes(search.toLowerCase()) || i.NoKK.includes(search)))">
+                                        <tr class="hover:bg-blue-50/30 transition-colors">
+                                            <td class="p-6 font-bold text-slate-700" x-text="w.Nama"></td>
+                                            <td class="p-6 text-sm font-bold text-slate-400" x-text="w.NoKK"></td>
+                                            <td class="p-6 text-xs text-slate-500 font-medium" x-text="`RT ${w.RT} Blok ${w.Blok} No ${w.Nomer}`"></td>
+                                            <td class="p-6 text-center">
+                                                <button @click="lihatKeluarga(w.NoKK)" class="px-5 py-2.5 bg-blue-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700">Detail KK</button>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </template>
+                                <template x-if="view === 'data'">
+                                    <template x-for="w in wargaList.filter(i => i.Nama.toLowerCase().includes(search.toLowerCase()) || i.NIK.includes(search))">
+                                        <tr class="hover:bg-blue-50/30 transition-colors">
+                                            <td class="p-6 flex items-center gap-4">
+                                                <img :src="w.Foto && w.Foto.length > 100 ? 'data:image/png;base64,' + w.Foto : 'https://ui-avatars.com/api/?background=random&name='+w.Nama" class="w-10 h-10 rounded-xl object-cover shadow-sm">
+                                                <span class="font-bold text-slate-700" x-text="w.Nama"></span>
+                                            </td>
+                                            <td class="p-6">
+                                                <p class="text-xs font-bold text-slate-800" x-text="w.NIK"></p>
+                                                <p class="text-[9px] text-slate-400 font-black uppercase mt-0.5" x-text="w.StatusKeluarga"></p>
+                                            </td>
+                                            <td class="p-6 text-xs text-slate-500 font-medium" x-text="`RT ${w.RT} Blok ${w.Blok} No ${w.Nomer}`"></td>
+                                            <td class="p-6 text-center whitespace-nowrap space-x-2">
+                                                <button @click="lihatDetail(w.NIK)" class="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm">👁️</button>
+                                                <button @click="editWarga(w.NIK)" class="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm">✏️</button>
+                                                <button @click="hapusWarga(w.NIK)" class="p-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm">🗑️</button>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form View (Lengkap) -->
+            <div x-show="view === 'tambah'" class="max-w-4xl mx-auto">
+                <div class="bg-white p-8 md:p-12 rounded-[3rem] border border-slate-100 shadow-xl">
+                    <div class="mb-10 text-center md:text-left">
+                        <h2 class="text-3xl font-black text-slate-800 tracking-tight" x-text="isEditMode ? 'Koreksi Data' : 'Tambah Warga'"></h2>
+                        <p class="text-slate-400 font-medium">Pastikan data yang diinputkan sesuai dengan identitas resmi (KTP/KK).</p>
+                    </div>
+                    
+                    <form @submit.prevent="saveWarga" class="space-y-8">
+                        <!-- Identitas Utama -->
+                        <div class="space-y-4">
+                            <p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] border-b pb-2">1. Identitas Utama</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">NIK (16 Digit)</label>
+                                    <input type="text" x-model="form.nik" :readonly="isEditMode" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold" required>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">Nomor Kartu Keluarga</label>
+                                    <input type="text" x-model="form.no_kk" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold" required>
+                                </div>
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-black text-slate-400 uppercase px-1">Nama Lengkap</label>
+                                <input type="text" x-model="form.nama" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold" required>
+                            </div>
+                        </div>
+
+                        <!-- Data Kelahiran & Status -->
+                        <div class="space-y-4">
+                            <p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] border-b pb-2">2. Kelahiran & Status</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">Tempat Lahir</label>
+                                    <input type="text" x-model="form.tempat_lahir" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold" required>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">Tanggal Lahir</label>
+                                    <input type="date" x-model="form.tanggal_lahir" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold" required>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">Kelamin</label>
+                                    <select x-model="form.kelamin" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold">
+                                        <option>Laki-Laki</option><option>Perempuan</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">Agama</label>
+                                    <select x-model="form.agama" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold">
+                                        <option>Islam</option><option>Kristen</option><option>Katolik</option><option>Hindu</option><option>Budha</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">Status Kawin</label>
+                                    <select x-model="form.status_perkawinan" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold">
+                                        <option>Belum Kawin</option><option>Kawin</option><option>Cerai Hidup</option><option>Cerai Mati</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">Sts. Keluarga</label>
+                                    <select x-model="form.status_keluarga" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold">
+                                        <option>Kepala Keluarga</option><option>Istri</option><option>Anak</option><option>Orang Tua</option><option>Lainnya</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Domisili & Pekerjaan -->
+                        <div class="space-y-4">
+                            <p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] border-b pb-2">3. Domisili & Pekerjaan</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">Pekerjaan</label>
+                                    <select x-model="form.pekerjaan" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold">
+                                        <template x-for="p in listPekerjaan">
+                                            <option x-text="p"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">No HP / WhatsApp</label>
+                                    <input type="text" x-model="form.no_hp" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold" placeholder="08xxxxxxxx">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">RT</label>
+                                    <select x-model="form.rt" @change="updateAlamatOtomatis" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold">
+                                        <option>1</option><option>2</option><option>3</option><option>4</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">Blok</label>
+                                    <select x-model="form.blok" @change="updateAlamatOtomatis" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold">
+                                        <template x-for="b in listBlok">
+                                            <option x-text="b"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">No. Rumah</label>
+                                    <input type="text" x-model="form.nomer" @input="updateAlamatOtomatis" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold" required>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">Status Tinggal</label>
+                                    <select x-model="form.status_tinggal" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold">
+                                        <option>Tetap</option><option>Kontrak/Sewa</option><option>Kost</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Alamat Detail -->
+                        <div class="space-y-4">
+                            <p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] border-b pb-2">4. Alamat Lengkap</p>
+                            <div class="space-y-4">
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">Alamat Domisili (Terisi Otomatis)</label>
+                                    <textarea x-model="form.alamat_tinggal" rows="2" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold text-sm"></textarea>
+                                </div>
+                                <div class="flex items-center gap-2 mb-2">
+                                    <input type="checkbox" x-model="isAlamatSama" @change="updateAlamatOtomatis" class="w-4 h-4 rounded">
+                                    <label class="text-xs font-bold text-slate-500">Alamat KTP sama dengan domisili</label>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase px-1">Alamat Asal (Sesuai KTP)</label>
+                                    <textarea x-model="form.alamat_ktp" rows="2" class="w-full p-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold text-sm" :readonly="isAlamatSama"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Foto -->
+                        <div class="space-y-4">
+                            <p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] border-b pb-2">5. Lampiran</p>
+                            <div class="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50 rounded-[2rem]">
+                                <div class="w-24 h-24 bg-white rounded-2xl overflow-hidden shadow-sm flex items-center justify-center">
+                                    <template x-if="form.foto">
+                                        <img :src="'data:image/png;base64,' + form.foto" class="w-full h-full object-cover">
+                                    </template>
+                                    <template x-if="!form.foto">
+                                        <span class="text-2xl">📸</span>
+                                    </template>
+                                </div>
+                                <div class="flex-1 text-center md:text-left">
+                                    <label class="cursor-pointer bg-white px-6 py-3 rounded-xl border border-slate-200 text-xs font-black uppercase text-slate-500 hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+                                        Pilih Foto Warga
+                                        <input type="file" @change="handleFileUpload" class="hidden" accept="image/*">
+                                    </label>
+                                    <p class="text-[10px] text-slate-400 mt-3 font-bold">Maksimal file 1MB. Format: JPG, PNG.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="flex flex-col md:flex-row gap-4 pt-8 border-t">
+                            <button type="submit" class="flex-1 bg-blue-600 text-white p-5 rounded-[1.5rem] font-black uppercase tracking-widest text-xs shadow-2xl shadow-blue-100 hover:bg-blue-700 transition-all">Simpan Seluruh Data</button>
+                            <button type="button" @click="view = 'data'; resetForm()" class="px-10 py-5 bg-slate-100 text-slate-500 rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all">Batalkan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
