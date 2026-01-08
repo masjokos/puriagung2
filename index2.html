@@ -1,0 +1,610 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Users, Home, LayoutGrid, ShieldCheck, Search, X, Heart, 
+  Phone, Briefcase, Calendar, MapPin, Lock, User,
+  PieChart as PieIcon, BarChart3, LogOut, Plus, 
+  Save, Trash2, CheckCircle2, AlertCircle, Map, CreditCard
+} from 'lucide-react';
+import { 
+  PieChart, Pie, Cell, ResponsiveContainer, 
+  BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend
+} from 'recharts';
+
+// --- Konfigurasi API ---
+const API_URL = "https://script.google.com/macros/s/AKfycbz3qxTEDd47HifJz4bBQaRELeavO00j8-paFtgP3CeqId5DcAHTZeTZy3SQYAzwmEV1MQ/exec";
+
+const App = () => {
+  // State Autentikasi
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loginData, setLoginData] = useState({ username: '', password: '' });
+  const [loginError, setLoginError] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  // State Aplikasi
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [dataWarga, setDataWarga] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedWarga, setSelectedWarga] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Form State
+  const [formData, setFormData] = useState({
+    nama: '', nik: '', no_kk: '', tempat_lahir: '', tanggal_lahir: '',
+    kelamin: 'Laki-laki', agama: 'Islam', status_tinggal: 'Tetap',
+    pekerjaan: '', rt: '', rw: '', blok: '', status_keluarga: 'Anggota Keluarga'
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formMsg, setFormMsg] = useState({ type: '', text: '' });
+
+  // --- Logika Login ---
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+    setIsAuthenticating(true);
+    try {
+      const response = await fetch(`${API_URL}?action=getUsers`);
+      const users = await response.json();
+      const foundUser = users.find(u => 
+        String(u.username).toLowerCase() === loginData.username.toLowerCase() && 
+        String(u.password) === loginData.password
+      );
+
+      if (foundUser) {
+        setCurrentUser(foundUser);
+        setIsLoggedIn(true);
+        fetchData();
+      } else {
+        setLoginError('Username atau Password salah.');
+      }
+    } catch (error) {
+      setLoginError('Koneksi server gagal.');
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}?action=getWarga`);
+      const result = await response.json();
+      setDataWarga(Array.isArray(result) ? result : []);
+    } catch (error) {
+      console.error("Fetch error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentUser(null);
+    setActiveTab('dashboard');
+  };
+
+  const handleAddWarga = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setFormMsg({ type: '', text: '' });
+    
+    try {
+      // Simulasi pengiriman (Ganti dengan endpoint POST Anda jika tersedia)
+      // await fetch(`${API_URL}`, { method: 'POST', body: JSON.stringify(formData) });
+      
+      // Mock update local state untuk demonstrasi
+      const newWarga = {
+        ...formData,
+        "Nama": formData.nama,
+        "NIK": formData.nik,
+        "Jenis Kelamin": formData.kelamin,
+        "Agama": formData.agama,
+        "Status Tinggal": formData.status_tinggal,
+        "RT": formData.rt,
+        "Blok": formData.blok,
+        "Status Keluarga": formData.status_keluarga
+      };
+      
+      setDataWarga([newWarga, ...dataWarga]);
+      setFormMsg({ type: 'success', text: 'Data warga berhasil ditambahkan!' });
+      setFormData({
+        nama: '', nik: '', no_kk: '', tempat_lahir: '', tanggal_lahir: '',
+        kelamin: 'Laki-laki', agama: 'Islam', status_tinggal: 'Tetap',
+        pekerjaan: '', rt: '', rw: '', blok: '', status_keluarga: 'Anggota Keluarga'
+      });
+      setTimeout(() => setActiveTab('warga'), 1500);
+    } catch (error) {
+      setFormMsg({ type: 'error', text: 'Gagal menyimpan data.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // --- Pengolahan Data Statistik ---
+  const stats = useMemo(() => {
+    const total = dataWarga.length;
+    const lk = dataWarga.filter(item => (item.Kelamin || item['Jenis Kelamin'] || "").startsWith('L')).length;
+    const pr = dataWarga.filter(item => (item.Kelamin || item['Jenis Kelamin'] || "").startsWith('P')).length;
+    const kk = dataWarga.filter(item => (item.StatusKeluarga || item['Status Keluarga'] || "").toLowerCase().includes('kepala keluarga')).length;
+    
+    const agamaMap = {};
+    const statusTinggalMap = {};
+    const rtMap = {};
+
+    dataWarga.forEach(w => {
+      const agm = w.Agama || "Lainnya";
+      const stt = w.StatusTinggal || w['Status Tinggal'] || "Tetap";
+      const rtNum = `RT ${w.RT || w.rt || '0'}`;
+
+      agamaMap[agm] = (agamaMap[agm] || 0) + 1;
+      statusTinggalMap[stt] = (statusTinggalMap[stt] || 0) + 1;
+      rtMap[rtNum] = (rtMap[rtNum] || 0) + 1;
+    });
+
+    const COLORS = ['#4F46E5', '#EC4899', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4'];
+
+    return {
+      total, lk, pr, kk,
+      genderData: [
+        { name: 'Laki-laki', value: lk, color: '#4F46E5' },
+        { name: 'Perempuan', value: pr, color: '#EC4899' }
+      ],
+      rtData: Object.keys(rtMap).map(k => ({ name: k, jumlah: rtMap[k] })).sort((a,b) => a.name.localeCompare(b.name)),
+      agamaData: Object.keys(agamaMap).map((k, i) => ({ name: k, value: agamaMap[k], color: COLORS[i % COLORS.length] })),
+      statusTinggalData: Object.keys(statusTinggalMap).map((k, i) => ({ name: k, value: statusTinggalMap[k], color: COLORS[(i+2) % COLORS.length] }))
+    };
+  }, [dataWarga]);
+
+  const filteredData = useMemo(() => {
+    let baseData = dataWarga;
+    if (activeTab === 'kk') {
+      baseData = dataWarga.filter(item => (item.StatusKeluarga || item['Status Keluarga'] || "").toLowerCase().includes('kepala keluarga'));
+    }
+    return baseData.filter(item => 
+      Object.values(item).some(val => String(val).toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [activeTab, dataWarga, searchTerm]);
+
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredData.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredData, currentPage]);
+
+  const getVal = (obj, keys) => {
+    if (!obj) return "-";
+    for (let key of keys) if (obj[key] !== undefined) return obj[key];
+    return "-";
+  };
+
+  // --- UI Components ---
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-indigo-50 flex items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-white">
+          <div className="p-10 lg:p-14">
+            <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white mb-10 shadow-xl shadow-indigo-100 mx-auto">
+              <ShieldCheck size={40} />
+            </div>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2 text-center">SI-WARGA</h1>
+            <p className="text-slate-400 font-medium mb-12 text-sm text-center">Masuk ke sistem manajemen lingkungan.</p>
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Username</label>
+                <div className="relative">
+                  <User className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
+                  <input type="text" required className="w-full pl-14 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl focus:ring-4 focus:ring-indigo-50 outline-none font-semibold transition-all" placeholder="Username" value={loginData.username} onChange={e => setLoginData({...loginData, username: e.target.value})} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
+                  <input type="password" required className="w-full pl-14 pr-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl focus:ring-4 focus:ring-indigo-50 outline-none font-semibold transition-all" placeholder="••••••••" value={loginData.password} onChange={e => setLoginData({...loginData, password: e.target.value})} />
+                </div>
+              </div>
+              {loginError && <div className="p-5 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-xs font-bold flex items-center gap-3"><AlertCircle size={16}/> {loginError}</div>}
+              <button type="submit" disabled={isAuthenticating} className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95 flex items-center justify-center gap-3">
+                {isAuthenticating ? 'Menghubungkan...' : 'Masuk Sekarang'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const menuItems = [
+    { id: 'dashboard', icon: LayoutGrid, label: 'Dashboard' },
+    { id: 'warga', icon: Users, label: 'Data Warga' },
+    { id: 'kk', icon: Home, label: 'Keluarga' },
+    { id: 'tambah', icon: Plus, label: 'Tambah Warga' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans">
+      {/* Sidebar Desktop */}
+      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-28 flex-col items-center py-10 bg-white border-r border-slate-100 z-50">
+        <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white mb-16 shadow-lg"><ShieldCheck size={28} /></div>
+        <nav className="flex flex-col gap-8">
+          {menuItems.map(item => (
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setCurrentPage(1); }} className={`group relative p-4 rounded-3xl transition-all ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'text-slate-300 hover:text-indigo-400'}`}>
+              <item.icon size={26} />
+              <span className="absolute left-full ml-4 px-3 py-1 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-[100] font-black uppercase tracking-widest">{item.label}</span>
+            </button>
+          ))}
+        </nav>
+        <button onClick={handleLogout} className="mt-auto p-4 text-slate-300 hover:text-rose-500 transition-colors"><LogOut size={26} /></button>
+      </aside>
+
+      <main className="lg:ml-28 min-h-screen">
+        <header className="px-8 py-8 lg:px-16 lg:py-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div>
+            <h1 className="text-3xl lg:text-4xl font-black tracking-tight uppercase text-slate-900">{menuItems.find(m => m.id === activeTab)?.label}</h1>
+            <p className="text-slate-400 text-[10px] mt-2 font-black tracking-[0.2em] uppercase">Sistem Administrasi Warga Pro</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
+              <input type="text" placeholder="Cari data..." className="pl-14 pr-8 py-4 bg-white border border-slate-100 rounded-3xl text-sm font-semibold w-full md:w-80 outline-none shadow-sm focus:ring-4 focus:ring-indigo-50 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+            <div className="hidden md:flex items-center gap-3 pl-4 border-l border-slate-200">
+              <div className="text-right">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Admin</p>
+                <p className="text-xs font-bold text-slate-900 uppercase mt-1">{currentUser?.username}</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-black">
+                {currentUser?.username.charAt(0).toUpperCase()}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="px-8 lg:px-16 pb-32">
+          {activeTab === 'dashboard' && (
+            <div className="space-y-10">
+              
+              {/* --- BENTO STATS --- */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                 {[
+                  { label: 'Total Populasi', val: stats.total, icon: Users, color: 'text-indigo-600', bg: 'bg-white' },
+                  { label: 'Kepala Keluarga', val: stats.kk, icon: Home, color: 'text-rose-500', bg: 'bg-white' },
+                  { label: 'Warga Pria', val: stats.lk, icon: User, color: 'text-blue-500', bg: 'bg-white' },
+                  { label: 'Warga Wanita', val: stats.pr, icon: User, color: 'text-pink-500', bg: 'bg-white' }
+                 ].map((item, i) => (
+                    <div key={i} className={`${item.bg} p-10 rounded-[3rem] border border-slate-50 shadow-sm flex flex-col justify-between transition-all hover:-translate-y-1`}>
+                      <div className={`w-14 h-14 rounded-[1.5rem] ${item.color.replace('text', 'bg')}/10 flex items-center justify-center ${item.color}`}>
+                        <item.icon size={28} />
+                      </div>
+                      <div className="mt-10">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">{item.label}</p>
+                        <p className="text-4xl font-black text-slate-900 tracking-tighter">{item.val}</p>
+                      </div>
+                    </div>
+                 ))}
+              </div>
+
+              {/* --- GRAPHS --- */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Gender */}
+                <div className="bg-white p-10 rounded-[3.5rem] border border-slate-50 shadow-sm flex flex-col items-center">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-10 w-full">Jenis Kelamin</h3>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={stats.genderData} innerRadius={70} outerRadius={90} paddingAngle={10} dataKey="value">
+                          {stats.genderData.map((entry, index) => <Cell key={index} fill={entry.color} stroke="none" />)}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex justify-center gap-10 mt-8">
+                    {stats.genderData.map(g => (
+                      <div key={g.name} className="text-center">
+                        <p className="text-2xl font-black text-slate-900 leading-none">{g.value}</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase mt-2">{g.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* RT Population - NEW BRIGHT THEME */}
+                <div className="lg:col-span-2 bg-white p-10 rounded-[3.5rem] border border-slate-50 shadow-sm">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-10">Populasi Per Lingkungan (RT)</h3>
+                  <div className="h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stats.rtData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 800, fill: '#94A3B8'}} dy={15} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 800, fill: '#94A3B8'}} />
+                        <Tooltip cursor={{fill: '#F8FAFC'}} contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                        <Bar dataKey="jumlah" fill="#6366f1" radius={[15, 15, 15, 15]} barSize={45} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Agama */}
+                <div className="bg-white p-10 rounded-[3.5rem] border border-slate-50 shadow-sm">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-10">Agama</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={stats.agamaData} outerRadius={80} dataKey="value">
+                          {stats.agamaData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                        </Pie>
+                        <Tooltip />
+                        <Legend iconType="circle" wrapperStyle={{paddingTop: '30px', fontSize: '10px', fontWeight: 'bold'}} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Status Tinggal */}
+                <div className="lg:col-span-2 bg-white p-10 rounded-[3.5rem] border border-slate-50 shadow-sm">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 mb-10">Status Tempat Tinggal</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stats.statusTinggalData} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                        <XAxis type="number" hide />
+                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 800, fill: '#64748B'}} width={100} />
+                        <Tooltip cursor={{fill: 'transparent'}} />
+                        <Bar dataKey="value" radius={[0, 20, 20, 0]} barSize={35}>
+                          {stats.statusTinggalData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ADD WARGA FORM */}
+          {activeTab === 'tambah' && (
+            <div className="max-w-5xl mx-auto">
+              <div className="bg-white rounded-[3.5rem] p-12 shadow-sm border border-slate-50">
+                <div className="mb-12">
+                  <h2 className="text-2xl font-black text-slate-900 mb-2">Formulir Pendaftaran Warga Baru</h2>
+                  <p className="text-slate-400 text-xs font-medium">Lengkapi data di bawah ini untuk menambahkan data ke database lingkungan.</p>
+                </div>
+                
+                {formMsg.text && (
+                  <div className={`mb-10 p-5 rounded-3xl flex items-center gap-4 text-sm font-bold ${formMsg.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+                    {formMsg.type === 'success' ? <CheckCircle2 size={20}/> : <AlertCircle size={20}/>}
+                    {formMsg.text}
+                  </div>
+                )}
+
+                <form onSubmit={handleAddWarga} className="space-y-12">
+                  <section className="space-y-8">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-black">1</div>
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Identitas Personal</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Nama Lengkap</label>
+                        <input type="text" required placeholder="Sesuai KTP" className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-sm" value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">NIK (KTP)</label>
+                        <input type="text" required placeholder="16 Digit" className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-sm" value={formData.nik} onChange={e => setFormData({...formData, nik: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Jenis Kelamin</label>
+                        <select className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-sm appearance-none" value={formData.kelamin} onChange={e => setFormData({...formData, kelamin: e.target.value})}>
+                          <option value="Laki-laki">Laki-laki</option>
+                          <option value="Perempuan">Perempuan</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Tempat Lahir</label>
+                        <input type="text" placeholder="Kota" className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-sm" value={formData.tempat_lahir} onChange={e => setFormData({...formData, tempat_lahir: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Tanggal Lahir</label>
+                        <input type="date" className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-sm" value={formData.tanggal_lahir} onChange={e => setFormData({...formData, tanggal_lahir: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Agama</label>
+                        <select className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-sm appearance-none" value={formData.agama} onChange={e => setFormData({...formData, agama: e.target.value})}>
+                          <option value="Islam">Islam</option>
+                          <option value="Kristen">Kristen</option>
+                          <option value="Katolik">Katolik</option>
+                          <option value="Hindu">Hindu</option>
+                          <option value="Budha">Budha</option>
+                          <option value="Lainnya">Lainnya</option>
+                        </select>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="space-y-8">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-black">2</div>
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Domisili & Keluarga</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Nomor KK</label>
+                        <input type="text" placeholder="16 Digit" className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-sm" value={formData.no_kk} onChange={e => setFormData({...formData, no_kk: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Status Hubungan</label>
+                        <select className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-sm appearance-none" value={formData.status_keluarga} onChange={e => setFormData({...formData, status_keluarga: e.target.value})}>
+                          <option value="Kepala Keluarga">Kepala Keluarga</option>
+                          <option value="Istri">Istri</option>
+                          <option value="Anak">Anak</option>
+                          <option value="Orang Tua">Orang Tua</option>
+                          <option value="Anggota Keluarga">Lainnya</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Status Tinggal</label>
+                        <select className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-sm appearance-none" value={formData.status_tinggal} onChange={e => setFormData({...formData, status_tinggal: e.target.value})}>
+                          <option value="Tetap">Tetap (Pemilik)</option>
+                          <option value="Kontrak">Kontrak / Sewa</option>
+                          <option value="Kost">Kost</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Pekerjaan</label>
+                        <input type="text" placeholder="Karyawan/Wiraswasta" className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-sm" value={formData.pekerjaan} onChange={e => setFormData({...formData, pekerjaan: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">RT</label>
+                        <input type="number" placeholder="001" className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-sm" value={formData.rt} onChange={e => setFormData({...formData, rt: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Blok / No. Rumah</label>
+                        <input type="text" placeholder="A1 / 10" className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-sm" value={formData.blok} onChange={e => setFormData({...formData, blok: e.target.value})} />
+                      </div>
+                    </div>
+                  </section>
+
+                  <div className="pt-10 flex justify-end gap-6">
+                    <button type="button" onClick={() => setActiveTab('warga')} className="px-10 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">Batalkan</button>
+                    <button type="submit" disabled={isSubmitting} className="px-12 py-5 bg-indigo-600 text-white rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-3">
+                      {isSubmitting ? 'Menyimpan...' : <><Save size={16}/> Simpan Data Warga</>}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* LIST VIEWS (Warga & KK) */}
+          {(activeTab === 'warga' || activeTab === 'kk') && (
+            <div className="bg-white border border-slate-100 rounded-[3.5rem] overflow-hidden shadow-sm">
+              <div className="p-10 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                   <h3 className="text-xl font-black text-slate-900 tracking-tight">{activeTab === 'kk' ? 'Daftar Kepala Keluarga' : 'Seluruh Database Warga'}</h3>
+                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">{filteredData.length} entri ditemukan</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={fetchData} className="p-4 bg-slate-50 text-slate-400 rounded-2xl hover:text-indigo-600 transition-colors"><BarChart3 size={18}/></button>
+                  <button onClick={() => setActiveTab('tambah')} className="px-8 py-4 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-100 flex items-center gap-2"><Plus size={16}/> Tambah</button>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-slate-50/50">
+                      <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Warga</th>
+                      <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Identitas</th>
+                      <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Lokasi</th>
+                      <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Hub</th>
+                      <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tinggal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {loading ? (
+                      <tr><td colSpan="5" className="px-10 py-24 text-center"><div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div><p className="mt-4 font-black text-slate-300 uppercase text-[10px] tracking-widest">Sinkronisasi Database...</p></td></tr>
+                    ) : paginatedData.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-indigo-50/30 transition-colors cursor-pointer group" onClick={() => setSelectedWarga(item)}>
+                        <td className="px-10 py-6">
+                          <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-indigo-600 font-black border border-slate-100 group-hover:border-indigo-200 uppercase transition-all">
+                               {getVal(item, ['Nama', 'nama']).charAt(0)}
+                            </div>
+                            <div>
+                               <p className="font-black text-slate-900 text-sm tracking-tight">{getVal(item, ['Nama', 'nama'])}</p>
+                               <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">{(item.Kelamin || item['Jenis Kelamin'] || "Laki-laki")}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-10 py-6">
+                           <p className="text-xs font-bold text-slate-700">{getVal(item, ['NIK', 'nik'])}</p>
+                           <p className="text-[10px] font-black text-indigo-400 uppercase mt-1 tracking-tighter">{item.Agama || "Islam"}</p>
+                        </td>
+                        <td className="px-10 py-6">
+                           <div className="flex items-center gap-2">
+                             <MapPin size={12} className="text-slate-300" />
+                             <span className="text-xs font-bold text-slate-600">RT {getVal(item, ['RT', 'rt'])} • {getVal(item, ['Blok', 'blok'])}</span>
+                           </div>
+                        </td>
+                        <td className="px-10 py-6">
+                           <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest ${
+                             (item.StatusKeluarga || item['Status Keluarga'] || "").toLowerCase().includes('kepala') ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'
+                           }`}>
+                              {item.StatusKeluarga || item['Status Keluarga'] || "Anggota"}
+                           </span>
+                        </td>
+                        <td className="px-10 py-6">
+                           <div className="flex items-center gap-2">
+                             <div className={`w-2 h-2 rounded-full ${ (item.StatusTinggal || "").toLowerCase().includes('tetap') ? 'bg-emerald-500' : 'bg-amber-500' }`}></div>
+                             <span className="text-[10px] font-black text-slate-500 uppercase">{item.StatusTinggal || "Tetap"}</span>
+                           </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Pagination */}
+              <div className="px-10 py-8 bg-slate-50/50 flex items-center justify-between">
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Halaman {currentPage} dari {totalPages || 1}</p>
+                 <div className="flex gap-4">
+                    <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="p-3 bg-white border border-slate-100 rounded-xl text-slate-400 disabled:opacity-30 hover:text-indigo-600 transition-all"><X size={16} className="rotate-90" /></button>
+                    <button disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(p => p + 1)} className="p-3 bg-white border border-slate-100 rounded-xl text-slate-400 disabled:opacity-30 hover:text-indigo-600 transition-all"><X size={16} className="-rotate-90" /></button>
+                 </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* DETAIL MODAL */}
+      {selectedWarga && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6" onClick={() => setSelectedWarga(null)}>
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"></div>
+          <div className="relative w-full max-w-2xl bg-white rounded-[4rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+            <div className="h-40 bg-indigo-600 relative">
+               <button onClick={() => setSelectedWarga(null)} className="absolute top-8 right-8 w-12 h-12 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-2xl flex items-center justify-center transition-all"><X size={24} /></button>
+            </div>
+            <div className="px-12 pb-16">
+               <div className="relative -mt-20 mb-10 flex flex-col items-center">
+                  <div className="w-40 h-40 rounded-[3rem] bg-white p-3 shadow-xl">
+                    <div className="w-full h-full rounded-[2.2rem] bg-slate-50 flex items-center justify-center text-indigo-200 border border-slate-100">
+                       <User size={64} />
+                    </div>
+                  </div>
+                  <h3 className="text-3xl font-black text-slate-900 mt-8 uppercase tracking-tight">{getVal(selectedWarga, ['Nama', 'nama'])}</h3>
+                  <p className="px-4 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-[0.2em] rounded-full mt-3">NIK: {getVal(selectedWarga, ['NIK', 'nik'])}</p>
+               </div>
+               
+               <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { label: 'Domisili', val: `RT ${getVal(selectedWarga, ['RT', 'rt'])} - ${getVal(selectedWarga, ['Blok', 'blok'])}`, icon: MapPin, color: 'text-indigo-500' },
+                    { label: 'Status Hub', val: getVal(selectedWarga, ['StatusKeluarga', 'Status Keluarga']), icon: Heart, color: 'text-rose-500' },
+                    { label: 'Pekerjaan', val: getVal(selectedWarga, ['Pekerjaan', 'pekerjaan']), icon: Briefcase, color: 'text-amber-500' },
+                    { label: 'Tempat/Tgl Lahir', val: `${getVal(selectedWarga, ['Tempat Lahir'])} / ${getVal(selectedWarga, ['Tanggal Lahir'])}`, icon: Calendar, color: 'text-emerald-500' },
+                  ].map((info, i) => (
+                    <div key={i} className="p-6 bg-slate-50 rounded-[2.5rem] flex items-center gap-5">
+                       <div className={`w-14 h-14 bg-white ${info.color} rounded-2xl shadow-sm flex items-center justify-center`}><info.icon size={22} /></div>
+                       <div>
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{info.label}</p>
+                          <p className="text-sm font-bold text-slate-700 mt-1">{info.val}</p>
+                       </div>
+                    </div>
+                  ))}
+               </div>
+               
+               <div className="mt-8 flex gap-4">
+                  <button className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all flex items-center justify-center gap-2"><Plus size={16}/> Edit Data</button>
+                  <button className="w-20 py-5 bg-rose-50 text-rose-500 rounded-3xl font-black flex items-center justify-center hover:bg-rose-100 transition-all"><Trash2 size={20}/></button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default App;
