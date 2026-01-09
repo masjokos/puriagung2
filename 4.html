@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puri Agung 2 - Manajemen Warga</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        .login-bg { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); position: relative; overflow: hidden; }
+        .login-bg::before { content: ''; position: absolute; width: 140%; height: 140%; top: -20%; left: -20%; background-image: url('https://www.transparenttextures.com/patterns/cubes.png'); opacity: 0.1; transform: rotate(15deg); }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .sidebar-item:hover { background-color: rgba(255,255,255,0.1); }
+        .active-menu { background-color: rgba(255,255,255,0.2); border-left: 4px solid #fff; }
+        .loader { border-top-color: #4f46e5; animation: spinner 0.8s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .modal-enter { animation: modalFadeIn 0.3s ease-out forwards; }
+        @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        /* Bento Grid Specific Styles */
+        .bento-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid #f1f5f9; }
+        .bento-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.05); border-color: #e2e8f0; }
+    </style>
+</head>
+<body class="text-slate-900">
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-slate-900/60 z-[9999] flex items-center justify-center hidden backdrop-blur-sm">
+        <div class="flex flex-col items-center text-center px-4">
+            <div class="loader ease-linear rounded-full border-4 border-slate-200 h-14 w-14 mb-4"></div>
+            <p class="text-white font-medium animate-pulse" id="loadingText">Menghubungkan ke database...</p>
+        </div>
+    </div>
+
+    <!-- Modal Detail & Edit Warga -->
+    <div id="modalWarga" class="fixed inset-0 bg-slate-900/60 z-[100] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto modal-enter">
+            <div class="p-6 border-b sticky top-0 bg-white z-10 flex justify-between items-center">
+                <h3 id="modalTitle" class="text-xl font-bold">Detail & Edit Warga</h3>
+                <button onclick="closeModal()" class="p-2 hover:bg-slate-100 rounded-full transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            <div class="p-8">
+                <form id="editWargaForm" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="space-y-4">
+                        <h4 class="text-indigo-600 font-bold text-sm uppercase tracking-wider">Informasi Identitas</h4>
+                        <div><label class="text-xs font-bold text-slate-400">NIK (Terkunci)</label><input type="text" name="nik" id="edit-nik" readonly class="w-full px-4 py-2 bg-slate-100 border rounded-xl outline-none cursor-not-allowed"></div>
+                        <div><label class="text-xs font-bold text-slate-400">No. Kartu Keluarga</label><input type="text" name="no_kk" id="edit-nokk" required class="w-full px-4 py-2 bg-slate-50 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                        <div><label class="text-xs font-bold text-slate-400">Nama Lengkap</label><input type="text" name="nama" id="edit-nama" required class="w-full px-4 py-2 bg-slate-50 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-xs font-bold text-slate-400">Kelamin</label><select name="kelamin" id="edit-kelamin" class="w-full px-4 py-2 bg-slate-50 border rounded-xl"><option value="Laki-Laki">Laki-Laki</option><option value="Perempuan">Perempuan</option></select></div>
+                            <div><label class="text-xs font-bold text-slate-400">Agama</label><select name="agama" id="edit-agama" class="w-full px-4 py-2 bg-slate-50 border rounded-xl"><option>Islam</option><option>Kristen</option><option>Katolik</option><option>Hindu</option><option>Buddha</option><option>Konghucu</option></select></div>
+                        </div>
+                        <div><label class="text-xs font-bold text-slate-400">Alamat Sesuai KTP</label><textarea name="alamat_ktp" id="edit-alamatktp" rows="2" class="w-full px-4 py-2 bg-slate-50 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></textarea></div>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="text-indigo-600 font-bold text-sm uppercase tracking-wider">Domisili & Kontak</h4>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div><label class="text-xs font-bold text-slate-400">Blok</label><input type="text" name="blok" id="edit-blok" class="w-full px-3 py-2 border rounded-xl"></div>
+                            <div><label class="text-xs font-bold text-slate-400">No</label><input type="text" name="nomer" id="edit-nomer" class="w-full px-3 py-2 border rounded-xl"></div>
+                            <div><label class="text-xs font-bold text-slate-400">RT</label><select name="rt" id="edit-rt" class="w-full px-3 py-2 border rounded-xl"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+                        </div>
+                        <div><label class="text-xs font-bold text-slate-400">WhatsApp</label><input type="text" name="no_hp" id="edit-nohp" required class="w-full px-4 py-2 bg-slate-50 border rounded-xl outline-none"></div>
+                        <div><label class="text-xs font-bold text-slate-400">Status Keluarga</label><select name="status_keluarga" id="edit-statuskel" class="w-full px-4 py-2 bg-slate-50 border rounded-xl"><option>Kepala Keluarga</option><option>Istri</option><option>Anak</option><option>Orang Tua</option><option>Lainnya</option></select></div>
+                        <div><label class="text-xs font-bold text-slate-400">Pekerjaan</label><input type="text" name="pekerjaan" id="edit-pekerjaan" class="w-full px-4 py-2 bg-slate-50 border rounded-xl outline-none"></div>
+                    </div>
+                    <div class="md:col-span-2 flex justify-end gap-3 pt-6 border-t mt-4">
+                        <button type="button" onclick="closeModal()" class="px-6 py-2 border rounded-xl hover:bg-slate-50 transition">Batal</button>
+                        <button type="submit" class="px-10 py-2 bg-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition">Update Data Warga</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Page -->
+    <div id="loginPage" class="min-h-screen flex items-center justify-center login-bg p-6">
+        <div class="max-w-4xl w-full grid md:grid-cols-2 glass-card rounded-3xl shadow-2xl overflow-hidden">
+            <div class="hidden md:flex flex-col justify-center p-12 bg-indigo-600 text-white relative">
+                <div class="relative z-10">
+                    <h2 class="text-4xl font-extrabold mb-4">Puri Agung 2</h2>
+                    <p class="text-indigo-100 text-lg mb-8 leading-relaxed">Sistem Informasi Manajemen Warga Terpadu.</p>
+                </div>
+            </div>
+            <div class="p-8 md:p-12 bg-white">
+                <div class="text-center md:text-left mb-10">
+                    <h1 class="text-3xl font-bold text-slate-800">Selamat Datang</h1>
+                </div>
+                <form id="loginForm" class="space-y-5">
+                    <input type="text" id="username" placeholder="Username" required class="w-full px-4 py-3 bg-slate-50 border rounded-xl outline-none">
+                    <input type="password" id="password" placeholder="Password" required class="w-full px-4 py-3 bg-slate-50 border rounded-xl outline-none">
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold">Masuk</button>
+                </form>
+                <div id="loginError" class="mt-4 text-red-600 text-sm hidden">Username atau password salah!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" class="hidden min-h-screen flex flex-col md:flex-row">
+        <aside class="w-full md:w-64 bg-slate-900 text-white flex-shrink-0 z-20">
+            <div class="p-6 text-2xl font-black flex items-center border-b border-slate-800">Puri Agung 2</div>
+            <nav class="mt-6">
+                <a href="#" onclick="showPage('dashboard')" id="menu-dashboard" class="sidebar-item active-menu flex items-center px-6 py-4"><i data-lucide="layout-dashboard" class="w-5 h-5 mr-3"></i> Dashboard</a>
+                <a href="#" onclick="showPage('dataWarga')" id="menu-warga" class="sidebar-item flex items-center px-6 py-4"><i data-lucide="contact" class="w-5 h-5 mr-3"></i> Data Warga</a>
+                <a href="#" onclick="showPage('kepalaKeluarga')" id="menu-kk" class="sidebar-item flex items-center px-6 py-4"><i data-lucide="users" class="w-5 h-5 mr-3"></i> Kepala Keluarga</a>
+                <a href="#" onclick="showPage('tambahData')" id="menu-tambah" class="sidebar-item flex items-center px-6 py-4"><i data-lucide="user-plus" class="w-5 h-5 mr-3"></i> Tambah Data</a>
+                <button onclick="logout()" class="mx-6 mt-10 w-48 py-2 bg-red-500/20 text-red-500 rounded-xl">Logout</button>
+            </nav>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto bg-slate-50 p-6 md:p-10">
+            <header class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 id="pageTitle" class="text-3xl font-extrabold text-slate-800 tracking-tight">Dashboard</h2>
+                    <p id="pageSubtitle" class="text-slate-500 text-sm mt-1">Ringkasan statistik warga Puri Agung 2 secara real-time.</p>
+                </div>
+                <div class="bg-indigo-50 px-4 py-2 rounded-2xl flex items-center gap-3 border border-indigo-100">
+                    <div class="p-2 bg-indigo-600 rounded-lg text-white"><i data-lucide="calendar" class="w-4 h-4"></i></div>
+                    <div>
+                        <p class="text-[10px] font-bold text-indigo-400 uppercase leading-none">Hari Ini</p>
+                        <p id="currentDateDisplay" class="text-sm font-bold text-indigo-900">9 Jan 2024</p>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Section (Bento Grid) -->
+            <div id="dashboardSection" class="space-y-6">
+                
+                <!-- Bento Layout Row 1: Key Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <!-- Total Warga -->
+                    <div class="md:col-span-2 bento-card bg-indigo-600 rounded-[2rem] p-8 text-white relative overflow-hidden flex flex-col justify-between">
+                        <div class="relative z-10">
+                            <p class="text-indigo-200 font-medium uppercase tracking-widest text-xs mb-1">Total Populasi</p>
+                            <h3 id="totalWargaCount" class="text-5xl font-black mb-2">0</h3>
+                            <p class="text-indigo-100 text-sm flex items-center"><i data-lucide="trending-up" class="w-4 h-4 mr-1"></i> Terdata di sistem</p>
+                        </div>
+                        <i data-lucide="users" class="absolute -right-4 -bottom-4 w-40 h-40 opacity-10 rotate-12"></i>
+                        <div class="mt-8 flex gap-2">
+                             <div class="px-4 py-2 bg-white/10 rounded-xl backdrop-blur-md text-[10px] font-bold">L: <span id="totalLaki">0</span></div>
+                             <div class="px-4 py-2 bg-white/10 rounded-xl backdrop-blur-md text-[10px] font-bold">P: <span id="totalPerempuan">0</span></div>
+                        </div>
+                    </div>
+
+                    <!-- RT Populer -->
+                    <div class="bento-card bg-white rounded-[2rem] p-8 flex flex-col justify-between">
+                        <div>
+                            <p class="text-slate-400 font-bold uppercase text-[10px] mb-4">RT Terpadat</p>
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center font-black text-xl">RT</div>
+                                <div>
+                                    <h4 id="topRTName" class="text-2xl font-black text-slate-800">00</h4>
+                                    <p class="text-xs text-slate-500"><span id="topRTCount">0</span> Jiwa</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-slate-50">
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div id="topRTProgress" class="bg-amber-500 h-full w-0 transition-all duration-1000"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Kepala Keluarga -->
+                    <div class="bento-card bg-emerald-500 rounded-[2rem] p-8 text-white flex flex-col justify-between">
+                        <p class="text-emerald-100 font-bold uppercase text-[10px]">Kepala Keluarga</p>
+                        <h3 id="totalKKCount" class="text-4xl font-black">0</h3>
+                        <div class="p-3 bg-white/20 rounded-2xl flex items-center gap-2">
+                            <i data-lucide="home" class="w-4 h-4"></i>
+                            <span class="text-xs font-bold">KK Terdaftar</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bento Layout Row 2: Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Populasi RT Bar Chart -->
+                    <div class="lg:col-span-2 bento-card bg-white rounded-[2rem] p-8">
+                        <div class="flex items-center justify-between mb-8">
+                            <div>
+                                <h4 class="font-black text-slate-800">Distribusi Populasi RT</h4>
+                                <p class="text-xs text-slate-400">Perbandingan jumlah warga tiap RT</p>
+                            </div>
+                            <div class="p-2 bg-slate-50 rounded-xl"><i data-lucide="bar-chart-3" class="w-5 h-5 text-indigo-600"></i></div>
+                        </div>
+                        <div class="h-[250px]">
+                            <canvas id="populasiRTChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Gender Pie Chart -->
+                    <div class="bento-card bg-white rounded-[2rem] p-8 flex flex-col">
+                        <h4 class="font-black text-slate-800 mb-2 text-center">Proporsi Gender</h4>
+                        <div class="flex-1 flex items-center justify-center py-4">
+                            <div class="w-full h-[200px]">
+                                <canvas id="genderPieChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="flex justify-center gap-6 mt-4 border-t pt-4">
+                            <div class="text-center">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase">Laki-laki</p>
+                                <p id="percLaki" class="text-sm font-black text-indigo-600">0%</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase">Perempuan</p>
+                                <p id="percPerempuan" class="text-sm font-black text-rose-500">0%</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bento Layout Row 3: Advanced Stacked Stats -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Agama Stacked Chart -->
+                    <div class="bento-card bg-slate-900 rounded-[2rem] p-8 text-white">
+                        <div class="mb-6">
+                            <h4 class="font-black">Komposisi Agama per RT</h4>
+                            <p class="text-xs text-slate-500">Persentase penganut agama di tiap wilayah</p>
+                        </div>
+                        <div class="h-[300px]">
+                            <canvas id="agamaStackedChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Status Tinggal Pie/Polar -->
+                    <div class="bento-card bg-white rounded-[2rem] p-8">
+                        <div class="mb-6">
+                            <h4 class="font-black text-slate-800">Status Tinggal per RT</h4>
+                            <p class="text-xs text-slate-400">Perbandingan warga tetap vs pendatang</p>
+                        </div>
+                        <div class="h-[300px]">
+                            <canvas id="statusTinggalChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Data Warga Section -->
+            <div id="dataWargaSection" class="hidden">
+                <div class="bg-white p-6 rounded-2xl shadow-sm mb-6 flex gap-4 items-center border">
+                    <input type="text" id="searchWargaInput" oninput="renderTableWarga()" placeholder="Cari NIK atau Nama..." class="flex-1 px-4 py-3 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+                <div class="bg-white rounded-3xl shadow-sm overflow-hidden border">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 border-b">
+                            <tr>
+                                <th class="px-6 py-5 text-xs font-bold uppercase text-slate-500">Profil</th>
+                                <th class="px-6 py-5 text-xs font-bold uppercase text-slate-500">Alamat</th>
+                                <th class="px-6 py-5 text-xs font-bold uppercase text-slate-500">Status</th>
+                                <th class="px-6 py-5 text-xs font-bold uppercase text-slate-500 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wargaTableBody" class="divide-y divide-slate-50"></tbody>
+                    </table>
+                    <div class="p-6 bg-slate-50 border-t flex items-center justify-between">
+                        <p class="text-sm text-slate-500" id="paginationInfo">Menampilkan data...</p>
+                        <div class="flex gap-2">
+                            <button onclick="changePage(-1)" id="prevBtn" class="px-4 py-2 border rounded-xl bg-white disabled:opacity-50">Sebelumnya</button>
+                            <button onclick="changePage(1)" id="nextBtn" class="px-4 py-2 border rounded-xl bg-white disabled:opacity-50">Selanjutnya</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kepala Keluarga Section -->
+            <div id="kepalaKeluargaSection" class="hidden">
+                 <div class="bg-white rounded-3xl shadow-sm overflow-hidden border border-slate-100">
+                    <table class="w-full text-left">
+                        <thead class="bg-indigo-600 text-white">
+                            <tr>
+                                <th class="px-6 py-5 font-bold uppercase text-xs">Nama KK</th>
+                                <th class="px-6 py-5 font-bold uppercase text-xs">No KK</th>
+                                <th class="px-6 py-5 font-bold uppercase text-xs">Alamat</th>
+                                <th class="px-6 py-5 font-bold uppercase text-xs text-center">Jiwa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kkTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                    <div class="p-6 bg-slate-50 border-t flex items-center justify-between">
+                        <p class="text-sm text-slate-500" id="kkPaginationInfo"></p>
+                        <div class="flex gap-2">
+                            <button onclick="changePageKK(-1)" id="prevBtnKK" class="px-4 py-2 border rounded-xl bg-white">Prev</button>
+                            <button onclick="changePageKK(1)" id="nextBtnKK" class="px-4 py-2 border rounded-xl bg-white">Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tambah Data Section -->
+            <div id="tambahDataSection" class="hidden">
+                <div class="max-w-5xl mx-auto bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                    <form id="wargaForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="space-y-4">
+                            <h5 class="font-bold border-b pb-2 text-indigo-600 flex items-center"><i data-lucide="user" class="w-4 h-4 mr-2"></i> Identitas Dasar</h5>
+                            <div><label class="text-xs font-semibold uppercase text-slate-400">NIK</label><input type="text" name="nik" required maxlength="16" class="w-full px-3 py-2 bg-slate-50 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                            <div><label class="text-xs font-semibold uppercase text-slate-400">No. Kartu Keluarga</label><input type="text" name="no_kk" required maxlength="16" class="w-full px-3 py-2 bg-slate-50 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                            <div><label class="text-xs font-semibold uppercase text-slate-400">Nama Lengkap</label><input type="text" name="nama" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 uppercase"></div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div><label class="text-xs font-semibold uppercase text-slate-400">Kelamin</label><select name="kelamin" class="w-full px-3 py-2 bg-slate-50 border rounded-xl"><option value="Laki-Laki">Laki-Laki</option><option value="Perempuan">Perempuan</option></select></div>
+                                <div><label class="text-xs font-semibold uppercase text-slate-400">Agama</label><select name="agama" class="w-full px-3 py-2 bg-slate-50 border rounded-xl"><option>Islam</option><option>Kristen</option><option>Katolik</option><option>Hindu</option><option>Buddha</option><option>Konghucu</option></select></div>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <h5 class="font-bold border-b pb-2 text-indigo-600 flex items-center"><i data-lucide="calendar" class="w-4 h-4 mr-2"></i> Kelahiran & Status</h5>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div><label class="text-xs font-semibold uppercase text-slate-400">Tempat Lahir</label><input type="text" name="tempat_lahir" class="w-full px-3 py-2 bg-slate-50 border rounded-xl"></div>
+                                <div><label class="text-xs font-semibold uppercase text-slate-400">Tgl Lahir</label><input type="date" name="tanggal_lahir" id="inputTanggalLahir" class="w-full px-3 py-2 bg-slate-50 border rounded-xl"></div>
+                            </div>
+                            <div><label class="text-xs font-semibold uppercase text-slate-400">Status Perkawinan</label><select name="status_perkawinan" class="w-full px-3 py-2 bg-slate-50 border rounded-xl"><option>Belum Kawin</option><option>Kawin</option><option>Cerai Hidup</option><option>Cerai Mati</option></select></div>
+                            <div><label class="text-xs font-semibold uppercase text-slate-400">Status Tinggal</label><select name="status_tinggal" class="w-full px-3 py-2 bg-slate-50 border rounded-xl"><option>Tetap</option><option>Kontrak</option><option>Kos</option><option>Lainnya</option></select></div>
+                            <div><label class="text-xs font-semibold uppercase text-slate-400">Pekerjaan</label><select name="pekerjaan" class="w-full px-3 py-2 bg-slate-50 border rounded-xl"><option>Belum/Tidak Bekerja</option><option>Mengurus Rumah Tangga</option><option>Pelajar/Mahasiswa</option><option>Pensiunan</option><option>PNS</option><option>TNI</option><option>POLRI</option><option>Karyawan Swasta</option><option>Wiraswasta</option><option>Petani</option><option>Nelayan</option></select></div>
+                        </div>
+                        <div class="space-y-4">
+                            <h5 class="font-bold border-b pb-2 text-indigo-600 flex items-center"><i data-lucide="home" class="w-4 h-4 mr-2"></i> Domisili & Kontak</h5>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div><label class="text-[10px] font-bold uppercase text-slate-400">Blok</label><select name="blok" id="inputBlok" class="w-full px-2 py-2 bg-slate-50 border rounded-xl"><option>A</option><option>B</option><option>B1</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option></select></div>
+                                <div><label class="text-[10px] font-bold uppercase text-slate-400">Nomer</label><input type="text" name="nomer" id="inputNomer" class="w-full px-2 py-2 bg-slate-50 border rounded-xl"></div>
+                                <div><label class="text-[10px] font-bold uppercase text-slate-400">RT</label><select name="rt" id="inputRT" class="w-full px-2 py-2 bg-slate-50 border rounded-xl"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+                            </div>
+                            <div class="p-3 bg-indigo-50 rounded-xl">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="checkbox" id="checkAlamatSama" class="w-4 h-4 text-indigo-600 rounded">
+                                    <span class="ml-2 text-xs font-bold text-indigo-700">Alamat KTP sama dengan domisili</span>
+                                </label>
+                                <textarea name="alamat_ktp" id="inputAlamatKTP" rows="2" class="w-full mt-2 px-3 py-2 text-xs border rounded-lg outline-none" placeholder="Masukkan alamat lengkap sesuai KTP..."></textarea>
+                            </div>
+                            <div><label class="text-xs font-semibold uppercase text-slate-400">Hubungan Keluarga</label><select name="status_keluarga" class="w-full px-3 py-2 bg-slate-50 border rounded-xl"><option>Kepala Keluarga</option><option>Istri</option><option>Anak</option><option>Orang Tua</option><option>Lainnya</option></select></div>
+                            <div><label class="text-xs font-semibold uppercase text-slate-400">WhatsApp (62...)</label><input type="text" name="no_hp" placeholder="62812345678" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl outline-none"></div>
+                        </div>
+                        <div class="md:col-span-2 lg:col-span-3 pt-4 border-t">
+                            <label class="text-xs font-bold uppercase text-slate-400 mb-2 block">Upload Foto Warga (Opsional)</label>
+                            <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-200 rounded-3xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
+                                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                    <i data-lucide="upload-cloud" class="w-8 h-8 text-slate-400 mb-2"></i>
+                                    <p class="text-sm text-slate-500" id="fileNameDisplay">Klik untuk upload foto</p>
+                                </div>
+                                <input type="file" id="fotoInput" accept="image/*" class="hidden" onchange="handleFileSelect(this)">
+                            </label>
+                        </div>
+                        <div class="md:col-span-2 lg:col-span-3 flex justify-end gap-3 mt-4">
+                            <button type="reset" class="px-6 py-3 border rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition">Reset</button>
+                            <button type="submit" class="px-12 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition">Simpan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbz3qxTEDd47HifJz4bBQaRELeavO00j8-paFtgP3CeqId5DcAHTZeTZy3SQYAzwmEV1MQ/exec";
+        const GD_FOLDER_ID = "1ICL5bzUlEz4IaLNgYWIKrortEEGrxMkJ";
+        let dbWarga = [];
+        let dbUsers = [];
+        let charts = {};
+        let currentPage = 1;
+        let currentPageKK = 1;
+        const rowsPerPage = 20;
+        let selectedFileBase64 = null;
+        let selectedFileName = null;
+
+        // --- Helpers ---
+        function setLoading(show, text = "Memproses...") {
+            const overlay = document.getElementById('loadingOverlay');
+            document.getElementById('loadingText').innerText = text;
+            show ? overlay.classList.remove('hidden') : overlay.classList.add('hidden');
+        }
+
+        function sanitizeWarga(w) {
+            const getProp = (obj, keys) => {
+                for (let key of keys) {
+                    if (obj[key] !== undefined && obj[key] !== null) return obj[key];
+                    const cleanKey = key.toLowerCase().replace(/[\.\s_]/g, '');
+                    for (let realKey in obj) { if (realKey.toLowerCase().replace(/[\.\s_]/g, '') === cleanKey) return obj[realKey]; }
+                }
+                return '';
+            };
+            return {
+                nik: String(getProp(w, ['nik', 'NIK'])),
+                no_kk: String(getProp(w, ['no_kk', 'No_KK'])),
+                nama: getProp(w, ['nama', 'Nama']),
+                kelamin: getProp(w, ['kelamin', 'Kelamin']),
+                agama: getProp(w, ['agama', 'Agama']),
+                blok: getProp(w, ['blok', 'Blok']),
+                nomer: getProp(w, ['nomer', 'Nomer']),
+                rt: String(getProp(w, ['rt', 'RT'])),
+                no_hp: getProp(w, ['no_hp', 'No_HP']),
+                status_keluarga: getProp(w, ['status_keluarga', 'Status_Keluarga']),
+                pekerjaan: getProp(w, ['pekerjaan', 'Pekerjaan']),
+                status_tinggal: getProp(w, ['status_tinggal', 'Status_Tinggal']) || 'Tetap',
+                alamat_ktp: getProp(w, ['alamat_ktp', 'Alamat_KTP'])
+            };
+        }
+
+        async function fetchAPI(action, payload = null, method = 'GET') {
+            const url = method === 'GET' ? `${API_URL}?action=${action}` : API_URL;
+            const options = { method: method, mode: 'cors' };
+            if (method === 'POST') options.body = JSON.stringify({ action: action, ...payload });
+            try {
+                const response = await fetch(url, options);
+                return await response.json();
+            } catch (err) { return null; }
+        }
+
+        // --- Core Functions ---
+        function openWargaDetail(nik) {
+            const raw = dbWarga.find(item => String(sanitizeWarga(item).nik) === String(nik));
+            if(!raw) return;
+            const w = sanitizeWarga(raw);
+            document.getElementById('edit-nik').value = w.nik;
+            document.getElementById('edit-nokk').value = w.no_kk;
+            document.getElementById('edit-nama').value = w.nama;
+            document.getElementById('edit-kelamin').value = w.kelamin || 'Laki-Laki';
+            document.getElementById('edit-agama').value = w.agama || 'Islam';
+            document.getElementById('edit-blok').value = w.blok;
+            document.getElementById('edit-nomer').value = w.nomer;
+            document.getElementById('edit-rt').value = w.rt || '1';
+            document.getElementById('edit-nohp').value = w.no_hp;
+            document.getElementById('edit-statuskel').value = w.status_keluarga || 'Lainnya';
+            document.getElementById('edit-pekerjaan').value = w.pekerjaan || '';
+            document.getElementById('edit-alamatktp').value = w.alamat_ktp || '';
+            const modal = document.getElementById('modalWarga');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function closeModal() {
+            document.getElementById('modalWarga').classList.add('hidden');
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            const now = new Date();
+            const options = { day: 'numeric', month: 'short', year: 'numeric' };
+            document.getElementById('currentDateDisplay').innerText = now.toLocaleDateString('id-ID', options);
+            
+            lucide.createIcons();
+            initCharts();
+            const users = await fetchAPI('getUsers');
+            if(users) dbUsers = users;
+        });
+
+        // --- UI Logic ---
+        function showPage(pageId) {
+            ['dashboardSection', 'dataWargaSection', 'tambahDataSection', 'kepalaKeluargaSection'].forEach(s => document.getElementById(s).classList.add('hidden'));
+            document.getElementById(`${pageId}Section`).classList.remove('hidden');
+            document.getElementById('pageTitle').innerText = pageId.replace(/([A-Z])/g, ' $1').trim();
+            
+            // Set active menu style
+            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active-menu'));
+            const menuId = pageId === 'dashboard' ? 'dashboard' : (pageId === 'dataWarga' ? 'warga' : (pageId === 'kepalaKeluarga' ? 'kk' : 'tambah'));
+            document.getElementById(`menu-${menuId}`).classList.add('active-menu');
+
+            if(pageId === 'dashboard') updateDashboard();
+            if(pageId === 'dataWarga') { currentPage = 1; renderTableWarga(); }
+            if(pageId === 'kepalaKeluarga') { currentPageKK = 1; renderTableKK(); }
+            lucide.createIcons();
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            setLoading(true, "Memvalidasi...");
+            const user = dbUsers.find(item => item.username === u && String(item.password) === p);
+            if (user) {
+                document.getElementById('loginPage').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                await syncData();
+                showPage('dashboard');
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+            setLoading(false);
+        });
+
+        async function syncData() {
+            setLoading(true, "Mengambil data...");
+            const data = await fetchAPI('getWarga');
+            if(data) dbWarga = data;
+            setLoading(false);
+        }
+
+        function initCharts() {
+            // Chart 1: Populasi RT (Bar)
+            charts.populasiRT = new Chart(document.getElementById('populasiRTChart'), {
+                type: 'bar',
+                data: { labels: ['RT 01', 'RT 02', 'RT 03', 'RT 04'], datasets: [{ label: 'Jumlah Jiwa', backgroundColor: '#6366f1', borderRadius: 12, data: [0,0,0,0] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } } }
+            });
+
+            // Chart 2: Gender (Pie/Doughnut)
+            charts.genderPie = new Chart(document.getElementById('genderPieChart'), {
+                type: 'doughnut',
+                data: { labels: ['Laki-Laki', 'Perempuan'], datasets: [{ data: [50, 50], backgroundColor: ['#6366f1', '#f43f5e'], borderWidth: 0, hoverOffset: 10 }] },
+                options: { cutout: '75%', plugins: { legend: { display: false } } }
+            });
+
+            // Chart 3: Agama per RT (Stacked Bar)
+            charts.agamaRT = new Chart(document.getElementById('agamaStackedChart'), {
+                type: 'bar',
+                data: { 
+                    labels: ['RT 01', 'RT 02', 'RT 03', 'RT 04'], 
+                    datasets: [
+                        { label: 'Islam', data: [0,0,0,0], backgroundColor: '#4f46e5' },
+                        { label: 'Kristen', data: [0,0,0,0], backgroundColor: '#10b981' },
+                        { label: 'Katolik', data: [0,0,0,0], backgroundColor: '#f59e0b' },
+                        { label: 'Lainnya', data: [0,0,0,0], backgroundColor: '#94a3b8' }
+                    ] 
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, grid: { color: '#334155' } } }, plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 10 } } } } }
+            });
+
+            // Chart 4: Status Tinggal (Radar/Polar Area)
+            charts.statusTinggal = new Chart(document.getElementById('statusTinggalChart'), {
+                type: 'polarArea',
+                data: { labels: ['Tetap', 'Kontrak', 'Kos', 'Lainnya'], datasets: [{ data: [0,0,0,0], backgroundColor: ['#6366f199', '#10b98199', '#f59e0b99', '#f43f5e99'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+            });
+        }
+
+        function updateDashboard() {
+            const data = dbWarga.map(w => sanitizeWarga(w));
+            
+            // Stats Dasar
+            const stats = { 1:0, 2:0, 3:0, 4:0 };
+            const gender = { 'Laki-Laki':0, 'Perempuan':0 };
+            const statusTinggal = { 'Tetap':0, 'Kontrak':0, 'Kos':0, 'Lainnya':0 };
+            const religionRT = {
+                1: { Islam:0, Kristen:0, Katolik:0, Lainnya:0 },
+                2: { Islam:0, Kristen:0, Katolik:0, Lainnya:0 },
+                3: { Islam:0, Kristen:0, Katolik:0, Lainnya:0 },
+                4: { Islam:0, Kristen:0, Katolik:0, Lainnya:0 }
+            };
+
+            data.forEach(d => {
+                if(stats[d.rt] !== undefined) stats[d.rt]++;
+                if(gender[d.kelamin] !== undefined) gender[d.kelamin]++;
+                if(statusTinggal[d.status_tinggal] !== undefined) statusTinggal[d.status_tinggal]++;
+                
+                if(religionRT[d.rt]) {
+                    if(['Islam', 'Kristen', 'Katolik'].includes(d.agama)) religionRT[d.rt][d.agama]++;
+                    else religionRT[d.rt].Lainnya++;
+                }
+            });
+
+            // Update DOM Bento Cards
+            document.getElementById('totalWargaCount').innerText = data.length;
+            document.getElementById('totalLaki').innerText = gender['Laki-Laki'];
+            document.getElementById('totalPerempuan').innerText = gender['Perempuan'];
+            
+            const totalKK = [...new Set(data.map(w => w.no_kk))].length;
+            document.getElementById('totalKKCount').innerText = totalKK;
+
+            // Find Top RT
+            let maxWarga = 0; let topRT = "01";
+            Object.entries(stats).forEach(([rt, count]) => { if(count > maxWarga) { maxWarga = count; topRT = rt; } });
+            document.getElementById('topRTName').innerText = `0${topRT}`;
+            document.getElementById('topRTCount').innerText = maxWarga;
+            document.getElementById('topRTProgress').style.width = data.length > 0 ? `${(maxWarga/data.length)*100}%` : '0%';
+
+            // Update Charts
+            charts.populasiRT.data.datasets[0].data = Object.values(stats);
+            charts.populasiRT.update();
+
+            charts.genderPie.data.datasets[0].data = [gender['Laki-Laki'], gender['Perempuan']];
+            charts.genderPie.update();
+            
+            const totalG = data.length || 1;
+            document.getElementById('percLaki').innerText = `${Math.round((gender['Laki-Laki']/totalG)*100)}%`;
+            document.getElementById('percPerempuan').innerText = `${Math.round((gender['Perempuan']/totalG)*100)}%`;
+
+            charts.agamaRT.data.datasets[0].data = [religionRT[1].Islam, religionRT[2].Islam, religionRT[3].Islam, religionRT[4].Islam];
+            charts.agamaRT.data.datasets[1].data = [religionRT[1].Kristen, religionRT[2].Kristen, religionRT[3].Kristen, religionRT[4].Kristen];
+            charts.agamaRT.data.datasets[2].data = [religionRT[1].Katolik, religionRT[2].Katolik, religionRT[3].Katolik, religionRT[4].Katolik];
+            charts.agamaRT.data.datasets[3].data = [religionRT[1].Lainnya, religionRT[2].Lainnya, religionRT[3].Lainnya, religionRT[4].Lainnya];
+            charts.agamaRT.update();
+
+            charts.statusTinggal.data.datasets[0].data = Object.values(statusTinggal);
+            charts.statusTinggal.update();
+        }
+
+        function renderTableWarga() {
+            const q = document.getElementById('searchWargaInput').value.toLowerCase();
+            const filtered = dbWarga.map(w => sanitizeWarga(w)).filter(d => d.nama.toLowerCase().includes(q) || d.nik.includes(q));
+            const start = (currentPage-1)*rowsPerPage;
+            const paginated = filtered.slice(start, start+rowsPerPage);
+            const body = document.getElementById('wargaTableBody');
+            body.innerHTML = paginated.map(d => `
+                <tr class="hover:bg-slate-50 cursor-pointer" onclick="openWargaDetail('${d.nik}')">
+                    <td class="px-6 py-4 flex items-center">
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold mr-3">${d.nama.charAt(0)}</div>
+                        <div><div class="text-xs font-bold uppercase">${d.nama}</div><div class="text-[9px] text-slate-400">${d.nik}</div></div>
+                    </td>
+                    <td class="px-6 py-4 text-xs">Blok ${d.blok} No ${d.nomer}</td>
+                    <td class="px-6 py-4"><span class="px-2 py-0.5 bg-slate-100 rounded text-[9px] font-bold uppercase">${d.status_keluarga}</span></td>
+                    <td class="px-6 py-4 text-center" onclick="event.stopPropagation()"><button onclick="deleteWarga('${d.nik}')" class="text-red-400 hover:text-red-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+                </tr>`).join('');
+            document.getElementById('paginationInfo').innerText = `Menampilkan ${start+1}-${Math.min(start+rowsPerPage, filtered.length)} dari ${filtered.length}`;
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = start+rowsPerPage >= filtered.length;
+            lucide.createIcons();
+        }
+
+        function renderTableKK() {
+            const clean = dbWarga.map(w => sanitizeWarga(w));
+            const kks = [...new Set(clean.map(w => w.no_kk))];
+            const start = (currentPageKK-1)*rowsPerPage;
+            const paginated = kks.slice(start, start+rowsPerPage);
+            const body = document.getElementById('kkTableBody');
+            body.innerHTML = paginated.map(nokk => {
+                const members = clean.filter(m => m.no_kk === nokk);
+                const head = members.find(m => m.status_keluarga === 'Kepala Keluarga') || members[0];
+                return `<tr class="hover:bg-slate-50 cursor-pointer" onclick="toggleKKDetail('${nokk}')">
+                    <td class="px-6 py-4 text-xs font-bold uppercase">${head.nama}</td>
+                    <td class="px-6 py-4 text-xs font-mono">${nokk}</td>
+                    <td class="px-6 py-4 text-xs">Blok ${head.blok} No ${head.nomer}</td>
+                    <td class="px-6 py-4 text-center"><span class="bg-indigo-50 text-indigo-600 px-2 py-1 rounded text-[10px] font-bold">${members.length}</span></td>
+                </tr>
+                <tr id="detail-kk-${nokk}" class="hidden bg-slate-50"><td colspan="4" class="p-4">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        ${members.map(m => `<div onclick="event.stopPropagation(); openWargaDetail('${m.nik}')" class="p-2 bg-white border rounded text-[9px] cursor-pointer hover:border-indigo-400"><b>${m.nama}</b><br>${m.status_keluarga}</div>`).join('')}
+                    </div>
+                </td></tr>`;
+            }).join('');
+        }
+
+        function toggleKKDetail(nokk) {
+            document.getElementById(`detail-kk-${nokk}`).classList.toggle('hidden');
+        }
+
+        function changePage(dir) { currentPage += dir; renderTableWarga(); }
+        function changePageKK(dir) { currentPageKK += dir; renderTableKK(); }
+
+        // --- Event Listeners ---
+        document.getElementById('checkAlamatSama').addEventListener('change', function() {
+            const area = document.getElementById('inputAlamatKTP');
+            if(this.checked) {
+                const b = document.getElementById('inputBlok').value;
+                const n = document.getElementById('inputNomer').value;
+                area.value = `Puri Agung 2, Blok ${b} No. ${n}`;
+                area.readOnly = true;
+                area.classList.add('bg-slate-100');
+            } else {
+                area.value = ""; area.readOnly = false; area.classList.remove('bg-slate-100');
+            }
+        });
+
+        function handleFileSelect(input) {
+            const file = input.files[0];
+            if (!file) return;
+            selectedFileName = file.name;
+            document.getElementById('fileNameDisplay').innerText = file.name;
+            const reader = new FileReader();
+            reader.onload = (e) => selectedFileBase64 = e.target.result.split(',')[1];
+            reader.readAsDataURL(file);
+        }
+
+        document.getElementById('wargaForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const payload = Object.fromEntries(formData.entries());
+            payload.tanggal_lahir = document.getElementById('inputTanggalLahir').value;
+            const rt = document.getElementById('inputRT').value;
+            const blok = document.getElementById('inputBlok').value;
+            const nomer = document.getElementById('inputNomer').value;
+            payload.alamat_tinggal = `Puri Agung 2, Blok ${blok} No. ${nomer}, RT 0${rt}`;
+            if (selectedFileBase64) {
+                payload.foto_base64 = selectedFileBase64;
+                payload.foto_name = `${payload.nik}_foto_${new Date().getTime()}.jpg`;
+                payload.folder_id = GD_FOLDER_ID;
+            }
+            setLoading(true, "Menyimpan data...");
+            try {
+                const res = await fetchAPI('addWarga', { payload: payload }, 'POST');
+                if(res && res.success) { 
+                    alert("Data berhasil disimpan!");
+                    e.target.reset(); 
+                    selectedFileBase64 = null;
+                    document.getElementById('fileNameDisplay').innerText = "Klik untuk upload foto";
+                    await syncData(); 
+                    showPage('dataWarga'); 
+                } else { alert("Terjadi kesalahan saat menyimpan."); }
+            } catch (err) { alert("Gagal terhubung ke server."); }
+            setLoading(false);
+        });
+
+        document.getElementById('editWargaForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = Object.fromEntries(new FormData(e.target).entries());
+            setLoading(true, "Memperbarui...");
+            const res = await fetchAPI('editWarga', { nik: payload.nik, payload: payload }, 'POST');
+            if(res && res.success) { closeModal(); await syncData(); renderTableWarga(); }
+            setLoading(false);
+        });
+
+        async function deleteWarga(nik) {
+            if(!confirm("Hapus warga ini?")) return;
+            setLoading(true, "Menghapus...");
+            const res = await fetchAPI('deleteWarga', { nik: nik }, 'POST');
+            if(res && res.success) { await syncData(); renderTableWarga(); }
+            setLoading(false);
+        }
+        
+        function logout() { location.reload(); }
+    </script>
+</body>
+</html>
