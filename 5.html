@@ -9,662 +9,454 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        
-        :root {
-            --primary: #4f46e5;
-            --primary-dark: #3730a3;
-            --bg-main: #f8fafc;
-        }
-
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: var(--bg-main);
-            color: #1e293b;
-        }
-
-        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); }
+        :root { --primary: #4f46e5; --bg-main: #f8fafc; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #1e293b; }
         .card-shadow { box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05); }
-        
-        .nav-item.active { 
-            background: #4f46e5; 
-            color: white; 
-            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
-        }
-
-        .loader { border-top-color: #4f46e5; animation: spinner 1s linear infinite; }
+        .nav-item.active { background: var(--primary); color: white; box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3); }
+        .bottom-nav-item.active { color: var(--primary); }
+        .loader { border-top-color: var(--primary); animation: spinner 1s linear infinite; }
         @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-
-        /* Mobile Adjustments */
-        @media (max-width: 768px) {
-            .main-content { padding-bottom: 80px; }
-        }
+        .modal-blur { backdrop-filter: blur(8px); }
+        body.modal-open { overflow: hidden; }
+        input:read-only { background-color: transparent; border: none; pointer-events: none; }
     </style>
 </head>
-<body class="overflow-x-hidden">
+<body class="overflow-x-hidden pb-20 lg:pb-0">
 
     <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center hidden">
-        <div class="loader ease-linear rounded-full border-4 border-t-4 border-slate-100 h-16 w-16 mb-4"></div>
-        <h3 class="text-indigo-600 font-bold animate-pulse" id="loadingText">Menghubungkan...</h3>
+    <div id="loadingOverlay" class="fixed inset-0 z-[200] bg-white/80 modal-blur flex flex-col items-center justify-center hidden">
+        <div class="loader ease-linear rounded-full border-4 border-slate-100 h-12 w-12 mb-4"></div>
+        <h3 class="text-indigo-600 font-bold animate-pulse" id="loadingText">Memproses...</h3>
+    </div>
+
+    <!-- Modal Detail & Edit Warga -->
+    <div id="modalDetail" class="fixed inset-0 z-[150] hidden flex items-center justify-center p-4 bg-slate-900/60 modal-blur" onclick="closeModal()">
+        <div class="bg-white w-full max-w-2xl max-h-[90vh] rounded-[2rem] card-shadow overflow-y-auto" onclick="event.stopPropagation()">
+            <!-- Header Modal -->
+            <div class="sticky top-0 z-10 bg-indigo-600 p-6 flex justify-between items-center text-white">
+                <div class="flex items-center gap-3">
+                    <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-full transition">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    </button>
+                    <h3 class="text-lg font-extrabold" id="modalTitle">Detail Profil</h3>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btnEdit" onclick="toggleEditMode()" class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl flex items-center gap-2 text-sm font-bold transition">
+                        <i data-lucide="edit-3" class="w-4 h-4"></i> Edit
+                    </button>
+                    <button id="btnSaveEdit" onclick="saveWargaEdit()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-xl flex items-center gap-2 text-sm font-bold transition hidden">
+                        <i data-lucide="check" class="w-4 h-4"></i> Simpan
+                    </button>
+                    <button onclick="closeModal()" class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="p-6 md:p-8">
+                <!-- Info Utama -->
+                <div class="bg-white rounded-3xl p-6 shadow-lg border border-slate-50 flex flex-col md:flex-row gap-6 -mt-12 relative z-20">
+                    <div class="w-20 h-20 bg-indigo-100 rounded-2xl flex-shrink-0 flex items-center justify-center text-indigo-600">
+                        <i data-lucide="user" class="w-10 h-10"></i>
+                    </div>
+                    <div class="flex-1 space-y-2">
+                        <input type="text" id="editNama" class="text-2xl font-extrabold text-slate-900 w-full outline-none focus:ring-2 focus:ring-indigo-100 rounded-lg px-2" value="-" readonly>
+                        <div class="flex items-center gap-2 text-slate-400 font-mono text-sm">
+                            <span>NIK:</span>
+                            <input type="text" id="editNik" class="w-full outline-none focus:ring-2 focus:ring-indigo-100 rounded px-2" value="-" readonly>
+                        </div>
+                        <div class="flex flex-wrap gap-2 mt-1" id="detailBadges"></div>
+                    </div>
+                </div>
+
+                <!-- Grid Data Detail -->
+                <form id="editForm" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                    <!-- Fields will be injected here -->
+                </form>
+
+                <div id="detailFamilySection" class="mt-8 border-t border-slate-100 pt-6 hidden">
+                    <h5 class="text-xs font-bold text-slate-400 uppercase mb-4 tracking-widest">Anggota Keluarga</h5>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="detailFamilyGrid"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Login Page -->
-    <div id="loginPage" class="min-h-screen flex items-center justify-center bg-[#1e1b4b] relative p-4 overflow-hidden">
-        <div class="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-            <svg width="100%" height="100%"><pattern id="pattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="white"/></pattern><rect width="100%" height="100%" fill="url(#pattern)"/></svg>
-        </div>
-        
-        <div class="w-full max-w-md z-10">
-            <div class="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden p-8 md:p-12">
-                <div class="text-center mb-10">
-                    <div class="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 rotate-3">
-                        <i data-lucide="shield-check" class="w-10 h-10"></i>
-                    </div>
-                    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Sistem Warga</h1>
-                    <p class="text-slate-400 mt-2 font-medium">Puri Agung 2 - Perumahan Nyaman</p>
+    <div id="loginPage" class="min-h-screen flex items-center justify-center bg-[#1e1b4b] p-4">
+        <div class="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 md:p-12">
+            <div class="text-center mb-10">
+                <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 rotate-3">
+                    <i data-lucide="shield-check" class="w-8 h-8"></i>
                 </div>
-
-                <form id="loginForm" class="space-y-6">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Username</label>
-                        <div class="relative">
-                            <i data-lucide="user" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300"></i>
-                            <input type="text" id="username" class="w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all outline-none" placeholder="Username" required>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Password</label>
-                        <div class="relative">
-                            <i data-lucide="lock" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300"></i>
-                            <input type="password" id="password" class="w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all outline-none" placeholder="••••••••" required>
-                        </div>
-                    </div>
-                    <div id="loginError" class="hidden animate-bounce p-4 bg-red-50 text-red-600 text-xs font-bold rounded-2xl border border-red-100 flex items-center gap-2">
-                        <i data-lucide="alert-triangle" class="w-4 h-4"></i> Akun tidak ditemukan. Silakan cek kembali.
-                    </div>
-                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-indigo-200 transition transform active:scale-95">
-                        Masuk Sekarang
-                    </button>
-                </form>
+                <h1 class="text-2xl font-extrabold text-slate-900">Sistem Warga</h1>
+                <p class="text-slate-400 text-sm">Puri Agung 2 - Admin Portal</p>
             </div>
+            <form id="loginForm" class="space-y-5">
+                <input type="text" id="username" class="w-full px-6 py-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Username" required>
+                <input type="password" id="password" class="w-full px-6 py-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Password" required>
+                <div id="loginError" class="hidden text-red-500 text-xs font-bold text-center">Username/Password salah</div>
+                <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition">Masuk</button>
+            </form>
         </div>
     </div>
 
     <!-- Main App -->
-    <div id="mainApp" class="hidden min-h-screen">
+    <div id="mainApp" class="hidden min-h-screen flex flex-col lg:flex-row">
         <!-- Sidebar (Desktop) -->
-        <aside class="fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-100 hidden lg:flex flex-col z-40">
-            <div class="p-8">
-                <div class="flex items-center gap-3 mb-10">
-                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-100">
-                        <i data-lucide="home" class="w-6 h-6"></i>
-                    </div>
-                    <span class="font-extrabold text-xl tracking-tight">Puri Agung 2</span>
-                </div>
-                
-                <nav class="space-y-2">
-                    <button onclick="showPage('dashboard')" class="nav-item w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-slate-500 hover:bg-slate-50 transition active" data-page="dashboard">
-                        <i data-lucide="layout-grid" class="w-5 h-5"></i> Dashboard
-                    </button>
-                    <button onclick="showPage('dataWarga')" class="nav-item w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-slate-500 hover:bg-slate-50 transition" data-page="dataWarga">
-                        <i data-lucide="users" class="w-5 h-5"></i> Data Warga
-                    </button>
-                    <button onclick="showPage('formWarga')" class="nav-item w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-slate-500 hover:bg-slate-50 transition" data-page="formWarga">
-                        <i data-lucide="user-plus" class="w-5 h-5"></i> Tambah Baru
-                    </button>
-                </nav>
+        <aside class="hidden lg:flex w-72 bg-white border-r border-slate-100 flex-col p-8 sticky top-0 h-screen">
+            <div class="flex items-center gap-3 mb-10">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white"><i data-lucide="home" class="w-6 h-6"></i></div>
+                <span class="font-extrabold text-xl">Puri Agung 2</span>
             </div>
-            <div class="mt-auto p-8">
-                <button onclick="logout()" class="w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-red-500 hover:bg-red-50 transition">
-                    <i data-lucide="log-out" class="w-5 h-5"></i> Keluar
-                </button>
-            </div>
+            <nav class="space-y-2 flex-1">
+                <button onclick="showPage('dashboard')" class="nav-item w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-slate-500 active" data-page="dashboard"><i data-lucide="layout-grid"></i> Beranda</button>
+                <button onclick="showPage('dataWarga')" class="nav-item w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-slate-500" data-page="dataWarga"><i data-lucide="users"></i> Data Warga</button>
+                <button onclick="showPage('kepalaKeluarga')" class="nav-item w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-slate-500" data-page="kepalaKeluarga"><i data-lucide="user-square"></i> Kepala Keluarga</button>
+                <button onclick="showPage('formWarga')" class="nav-item w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-slate-500" data-page="formWarga"><i data-lucide="user-plus"></i> Tambah</button>
+            </nav>
+            <button onclick="logout()" class="flex items-center gap-4 px-6 py-4 text-red-500 font-bold"><i data-lucide="log-out"></i> Keluar</button>
         </aside>
 
         <!-- Bottom Nav (Mobile) -->
-        <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-6 py-3 flex justify-between items-center z-50 lg:hidden rounded-t-[2rem] shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.05)]">
-            <button onclick="showPage('dashboard')" class="p-3 text-slate-400 mobile-nav" data-page="dashboard"><i data-lucide="layout-grid" class="w-6 h-6"></i></button>
-            <button onclick="showPage('dataWarga')" class="p-3 text-slate-400 mobile-nav" data-page="dataWarga"><i data-lucide="users" class="w-6 h-6"></i></button>
-            <button onclick="showPage('formWarga')" class="p-3 text-slate-400 mobile-nav" data-page="formWarga"><i data-lucide="user-plus" class="w-6 h-6"></i></button>
-            <button onclick="logout()" class="p-3 text-red-400"><i data-lucide="log-out" class="w-6 h-6"></i></button>
+        <nav class="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t p-3 z-[60] flex justify-around rounded-t-3xl shadow-up">
+            <button onclick="showPage('dashboard')" class="bottom-nav-item flex flex-col items-center gap-1 text-slate-400 active" data-page="dashboard"><i data-lucide="layout-grid"></i></button>
+            <button onclick="showPage('dataWarga')" class="bottom-nav-item flex flex-col items-center gap-1 text-slate-400" data-page="dataWarga"><i data-lucide="users"></i></button>
+            <button onclick="showPage('formWarga')" class="bottom-nav-item -mt-8 flex flex-col items-center"><div class="w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center border-4 border-white shadow-lg"><i data-lucide="plus"></i></div></button>
+            <button onclick="showPage('kepalaKeluarga')" class="bottom-nav-item flex flex-col items-center gap-1 text-slate-400" data-page="kepalaKeluarga"><i data-lucide="user-square"></i></button>
+            <button onclick="logout()" class="bottom-nav-item flex flex-col items-center gap-1 text-slate-400"><i data-lucide="log-out"></i></button>
         </nav>
 
-        <!-- Main Content Area -->
-        <main class="lg:ml-72 min-h-screen flex flex-col main-content">
-            <!-- Header -->
-            <header class="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-slate-100 p-6 md:px-10 flex items-center justify-between">
-                <div>
-                    <h2 id="pageTitle" class="text-2xl font-extrabold text-slate-900">Dashboard</h2>
-                    <p class="text-slate-400 text-xs font-semibold uppercase tracking-widest mt-0.5" id="currentDateDisplay"></p>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="hidden sm:flex flex-col items-end mr-2">
-                        <span id="adminName" class="text-sm font-bold text-slate-700">Administrator</span>
-                        <span class="text-[10px] text-emerald-500 font-bold bg-emerald-50 px-2 rounded-full uppercase">Online</span>
-                    </div>
-                    <div class="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 font-bold border-2 border-white shadow-sm">
-                        AD
-                    </div>
-                </div>
+        <!-- Content Area -->
+        <div class="flex-1 flex flex-col min-w-0">
+            <header class="p-6 border-b bg-white/70 backdrop-blur sticky top-0 z-30 flex justify-between items-center">
+                <h2 id="pageTitle" class="text-xl font-extrabold">Dashboard</h2>
+                <div class="flex items-center gap-2"><div class="text-right hidden sm:block text-xs font-bold text-slate-700">Admin</div><div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center font-bold">AD</div></div>
             </header>
 
-            <!-- Page Container -->
-            <div class="p-6 md:p-10 space-y-8">
-                
-                <!-- Page: Dashboard -->
-                <div id="page-dashboard" class="page-content animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div class="bg-white p-6 rounded-[2rem] card-shadow border border-slate-50 flex items-center gap-5">
-                            <div class="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center"><i data-lucide="users" class="w-7 h-7"></i></div>
-                            <div><p class="text-slate-400 text-xs font-bold uppercase">Total Warga</p><h3 id="stat-total" class="text-2xl font-extrabold">0</h3></div>
-                        </div>
-                        <div class="bg-white p-6 rounded-[2rem] card-shadow border border-slate-50 flex items-center gap-5">
-                            <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><i data-lucide="user" class="w-7 h-7"></i></div>
-                            <div><p class="text-slate-400 text-xs font-bold uppercase">Laki-Laki</p><h3 id="stat-laki" class="text-2xl font-extrabold">0</h3></div>
-                        </div>
-                        <div class="bg-white p-6 rounded-[2rem] card-shadow border border-slate-50 flex items-center gap-5">
-                            <div class="w-14 h-14 bg-pink-50 text-pink-600 rounded-2xl flex items-center justify-center"><i data-lucide="user" class="w-7 h-7"></i></div>
-                            <div><p class="text-slate-400 text-xs font-bold uppercase">Perempuan</p><h3 id="stat-perempuan" class="text-2xl font-extrabold">0</h3></div>
-                        </div>
-                        <div class="bg-white p-6 rounded-[2rem] card-shadow border border-slate-50 flex items-center gap-5">
-                            <div class="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center"><i data-lucide="home" class="w-7 h-7"></i></div>
-                            <div><p class="text-slate-400 text-xs font-bold uppercase">Warga Tetap</p><h3 id="stat-tetap" class="text-2xl font-extrabold">0</h3></div>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10">
-                        <!-- Chart: Agama -->
-                        <div class="bg-white p-8 rounded-[2.5rem] card-shadow border border-slate-50">
-                            <h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i data-lucide="pie-chart" class="w-5 h-5 text-indigo-500"></i> Sebaran Agama</h4>
-                            <div class="h-64"><canvas id="agamaChart"></canvas></div>
-                        </div>
-                        <!-- Chart: RT Distribution -->
-                        <div class="bg-white p-8 rounded-[2.5rem] card-shadow border border-slate-50">
-                            <h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-5 h-5 text-indigo-500"></i> Warga per RT</h4>
-                            <div class="h-64"><canvas id="rtChart"></canvas></div>
-                        </div>
-                        <!-- Recent Warga -->
-                        <div class="bg-white p-8 rounded-[2.5rem] card-shadow border border-slate-50 overflow-hidden lg:col-span-2">
-                            <div class="flex items-center justify-between mb-6">
-                                <h4 class="font-bold text-slate-800 flex items-center gap-2"><i data-lucide="clock" class="w-5 h-5 text-indigo-500"></i> Warga Terbaru</h4>
-                                <button onclick="showPage('dataWarga')" class="text-xs font-bold text-indigo-600 hover:underline">Lihat Semua</button>
-                            </div>
-                            <div id="recentWargaList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- JS Populated -->
-                            </div>
-                        </div>
+            <div class="p-6 space-y-8">
+                <!-- Page Dashboard -->
+                <div id="page-dashboard" class="page-content space-y-6">
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" id="statGrid"></div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-3xl card-shadow h-64"><canvas id="chartRT"></canvas></div>
+                        <div class="bg-white p-6 rounded-3xl card-shadow"><h4 class="font-bold mb-4">Warga Terbaru</h4><div id="recentWargaList" class="space-y-3"></div></div>
                     </div>
                 </div>
 
-                <!-- Page: Data Warga -->
-                <div id="page-dataWarga" class="page-content hidden space-y-6">
-                    <div class="flex flex-col md:flex-row gap-4 justify-between items-center">
-                        <div class="relative w-full md:w-96">
-                            <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300"></i>
-                            <input type="text" id="searchWarga" onkeyup="filterWarga()" class="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl card-shadow outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium" placeholder="Cari Nama atau NIK...">
-                        </div>
-                        <button onclick="showPage('formWarga')" class="w-full md:w-auto bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-100">
-                            <i data-lucide="plus" class="w-5 h-5"></i> Tambah Warga
-                        </button>
-                    </div>
-
-                    <!-- Desktop Table -->
-                    <div class="hidden md:block bg-white rounded-[2.5rem] border border-slate-50 card-shadow overflow-hidden">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-slate-50/50 border-b border-slate-100">
-                                    <th class="px-8 py-5 text-xs font-extrabold text-slate-400 uppercase tracking-widest">Informasi Warga</th>
-                                    <th class="px-8 py-5 text-xs font-extrabold text-slate-400 uppercase tracking-widest">Alamat Blok</th>
-                                    <th class="px-8 py-5 text-xs font-extrabold text-slate-400 uppercase tracking-widest">Status</th>
-                                    <th class="px-8 py-5 text-xs font-extrabold text-slate-400 uppercase tracking-widest text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="wargaTableBody" class="divide-y divide-slate-50"></tbody>
-                        </table>
-                    </div>
-
-                    <!-- Mobile Cards -->
-                    <div id="wargaCards" class="md:hidden grid grid-cols-1 gap-4"></div>
+                <!-- Page Data Warga -->
+                <div id="page-dataWarga" class="page-content hidden space-y-4">
+                    <div class="bg-white p-4 rounded-2xl flex items-center gap-3 border"><i data-lucide="search" class="text-slate-300"></i><input type="text" id="searchWarga" oninput="filterData('warga')" class="w-full outline-none" placeholder="Cari warga..."></div>
+                    <div class="bg-white rounded-2xl border overflow-hidden overflow-x-auto"><table class="w-full text-left"><thead class="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase"><tr class="border-b"><th class="p-4">Warga</th><th class="p-4">Lokasi</th><th class="p-4 text-right">Aksi</th></tr></thead><tbody id="wargaTableBody" class="divide-y"></tbody></table></div>
                 </div>
 
-                <!-- Page: Form Warga -->
+                <!-- Page KK -->
+                <div id="page-kepalaKeluarga" class="page-content hidden space-y-4">
+                    <input type="text" id="searchKK" oninput="filterData('kk')" class="w-full p-4 bg-white border rounded-2xl outline-none" placeholder="Cari Kepala Keluarga...">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="kkContainer"></div>
+                </div>
+
+                <!-- Page Form -->
                 <div id="page-formWarga" class="page-content hidden">
-                    <div class="max-w-4xl mx-auto bg-white rounded-[2.5rem] card-shadow border border-slate-50 overflow-hidden">
-                        <div class="p-8 md:p-12 border-b border-slate-50 bg-slate-50/30">
-                            <h3 class="text-2xl font-extrabold text-slate-900">Formulir Data Warga</h3>
-                            <p class="text-slate-400 font-medium">Lengkapi identitas warga sesuai dengan KTP terbaru.</p>
+                    <form id="addWargaForm" class="max-w-2xl mx-auto bg-white p-8 rounded-3xl border space-y-4">
+                        <h3 class="font-bold text-lg mb-4">Input Data Baru</h3>
+                        <input type="text" name="Nama" placeholder="Nama Lengkap" class="w-full p-4 bg-slate-50 rounded-xl outline-none" required>
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="number" name="NIK" placeholder="NIK" class="p-4 bg-slate-50 rounded-xl outline-none" required>
+                            <input type="number" name="No KK" placeholder="No KK" class="p-4 bg-slate-50 rounded-xl outline-none" required>
                         </div>
-                        <form id="wargaForm" class="p-8 md:p-12 space-y-8">
-                            <input type="hidden" id="editNik">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div class="space-y-2">
-                                    <label class="text-sm font-bold text-slate-700">NIK (Nomor Induk Kependudukan)</label>
-                                    <input type="text" id="f_nik" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all" required>
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-bold text-slate-700">Nama Lengkap</label>
-                                    <input type="text" id="f_nama" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all" required>
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-bold text-slate-700">Jenis Kelamin</label>
-                                    <select id="f_kelamin" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none">
-                                        <option value="Laki-laki">Laki-laki</option>
-                                        <option value="Perempuan">Perempuan</option>
-                                    </select>
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-bold text-slate-700">Agama</label>
-                                    <select id="f_agama" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none">
-                                        <option>Islam</option>
-                                        <option>Kristen</option>
-                                        <option>Katolik</option>
-                                        <option>Hindu</option>
-                                        <option>Budha</option>
-                                        <option>Lainnya</option>
-                                    </select>
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-bold text-slate-700">RT</label>
-                                    <input type="text" id="f_rt" placeholder="Contoh: 001" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-bold text-slate-700">Blok & No Rumah</label>
-                                    <div class="flex gap-4">
-                                        <input type="text" id="f_blok" placeholder="Blok" class="w-1/2 px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                                        <input type="text" id="f_nomer" placeholder="No" class="w-1/2 px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                                    </div>
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-sm font-bold text-slate-700">Status Tinggal</label>
-                                    <select id="f_status_tinggal" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none">
-                                        <option value="Tetap">Tetap</option>
-                                        <option value="Kontrak">Kontrak</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="flex justify-end pt-8 gap-4">
-                                <button type="button" onclick="showPage('dataWarga')" class="px-8 py-4 rounded-2xl font-bold text-slate-400 hover:bg-slate-50 transition">Batal</button>
-                                <button type="submit" class="px-10 py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition">Simpan Data</button>
-                            </div>
-                        </form>
-                    </div>
+                        <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg">Simpan Warga</button>
+                    </form>
                 </div>
             </div>
-        </main>
-    </div>
-
-    <!-- Detail Modal -->
-    <div id="detailModal" class="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-        <div class="bg-white w-full max-w-lg rounded-[2.5rem] card-shadow overflow-hidden transform scale-95 opacity-0 transition-all duration-300" id="modalContent">
-            <div class="relative h-32 bg-indigo-600 p-8 flex items-end">
-                <button onclick="closeModal()" class="absolute top-6 right-6 p-2 bg-white/20 hover:bg-white/30 rounded-xl text-white transition"><i data-lucide="x" class="w-5 h-5"></i></button>
-                <div class="w-20 h-20 bg-white rounded-3xl absolute -bottom-10 left-8 shadow-xl flex items-center justify-center border-4 border-white">
-                    <i data-lucide="user" class="w-10 h-10 text-indigo-600"></i>
-                </div>
-            </div>
-            <div class="pt-16 px-8 pb-10 space-y-6">
-                <div>
-                    <h2 id="m_nama" class="text-2xl font-extrabold text-slate-900">Nama Lengkap</h2>
-                    <p id="m_nik" class="text-slate-400 font-mono text-sm tracking-widest mt-1">NIK: 000000000000</p>
-                </div>
-                <div class="grid grid-cols-2 gap-6 pt-4 border-t border-slate-50">
-                    <div><p class="text-[10px] font-extrabold text-slate-300 uppercase tracking-widest mb-1">Blok/Rumah/RT</p><p id="m_alamat" class="font-bold text-slate-700">-</p></div>
-                    <div><p class="text-[10px] font-extrabold text-slate-300 uppercase tracking-widest mb-1">Status</p><span id="m_status" class="px-2 py-0.5 rounded-full text-[10px] font-bold">-</span></div>
-                    <div><p class="text-[10px] font-extrabold text-slate-300 uppercase tracking-widest mb-1">Jenis Kelamin</p><p id="m_gender" class="font-bold text-slate-700">-</p></div>
-                    <div><p class="text-[10px] font-extrabold text-slate-300 uppercase tracking-widest mb-1">Agama</p><p id="m_agama" class="font-bold text-slate-700">-</p></div>
-                </div>
-                <div class="pt-4 flex gap-3">
-                    <button id="btnEditModal" class="flex-1 py-3 bg-slate-50 text-slate-600 font-bold rounded-2xl hover:bg-slate-100 transition">Edit Data</button>
-                    <button onclick="closeModal()" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition">Tutup</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Notification -->
-    <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 z-[150] transform -translate-y-24 opacity-0 transition-all duration-500">
-        <div class="bg-slate-900 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3">
-            <div class="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center"><i data-lucide="check" class="w-4 h-4"></i></div>
-            <span id="toastMsg" class="font-bold text-sm">Berhasil disimpan</span>
         </div>
     </div>
 
     <script>
         const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz3qxTEDd47HifJz4bBQaRELeavO00j8-paFtgP3CeqId5DcAHTZeTZy3SQYAzwmEV1MQ/exec';
-        
-        let dbUsers = [];
-        let dbWarga = [];
-        let isEditing = false;
-        let chartInstance = null;
-        let rtChartInstance = null;
+        let dbWarga = [], dbUsers = [], charts = {};
+        let isEditMode = false;
+        let currentWargaNik = "";
 
-        // API Handler
-        async function fetchAPI(action, payload = null, method = 'GET') {
+        const getVal = (obj, key) => {
+            if (!obj) return "";
+            const k = Object.keys(obj).find(x => x.toLowerCase() === key.toLowerCase());
+            return k ? String(obj[k]).trim() : "";
+        };
+
+        const fetchAPI = async (action, payload = null) => {
+            let url = `${WEB_APP_URL}?action=${action}&t=${Date.now()}`;
+            if(payload) {
+                // Untuk update, kita gunakan method POST jika memungkinkan atau query string jika script GS hanya mendukung GET
+                // Di sini kita asumsikan script mendukung GET dengan parameter data
+                const params = new URLSearchParams(payload).toString();
+                url += `&${params}`;
+            }
             try {
-                const url = `${WEB_APP_URL}?action=${action}`;
-                if (method === 'GET') {
-                    const res = await fetch(url);
-                    return await res.json();
-                } else {
-                    await fetch(WEB_APP_URL, {
-                        method: 'POST',
-                        body: JSON.stringify({ action, ...payload }),
-                        mode: 'no-cors'
-                    });
-                    return { success: true };
-                }
-            } catch (err) {
-                console.error("API Error:", err);
-                return null;
-            }
-        }
+                const res = await fetch(url);
+                return await res.json();
+            } catch (e) { return null; }
+        };
 
-        // Logic Initialization
-        async function init() {
-            setLoading(true, "Mendownload Data...");
-            const users = await fetchAPI('getUsers');
-            if(users) dbUsers = users;
-            setLoading(false);
-        }
+        const showPage = (id) => {
+            document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
+            document.getElementById('page-' + id).classList.remove('hidden');
+            document.getElementById('pageTitle').innerText = id.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+            document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === id));
+        };
 
-        // Login
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const u = document.getElementById('username').value.trim();
-            const p = document.getElementById('password').value.trim();
-            
-            const user = dbUsers.find(x => String(x.username).toLowerCase() === u.toLowerCase() && String(x.password) === p);
-            
-            if (user) {
-                document.getElementById('loginPage').classList.add('hidden');
-                document.getElementById('mainApp').classList.remove('hidden');
-                document.getElementById('adminName').innerText = user.username;
-                showPage('dashboard');
-                await syncData();
-            } else {
-                document.getElementById('loginError').classList.remove('hidden');
-                setTimeout(() => document.getElementById('loginError').classList.add('hidden'), 3000);
-            }
-        });
+        const openWargaDetail = (nik) => {
+            const w = dbWarga.find(x => getVal(x, 'nik') === String(nik));
+            if(!w) return;
 
-        // Sync and Stats
-        async function syncData() {
-            const data = await fetchAPI('getWarga');
-            if(data) {
-                dbWarga = data;
-                updateDashboard();
-                renderWarga();
-            }
-        }
+            currentWargaNik = nik;
+            isEditMode = false;
+            updateModalUI();
 
-        function updateDashboard() {
-            const total = dbWarga.length;
+            document.getElementById('editNama').value = getVal(w, 'nama');
+            document.getElementById('editNik').value = getVal(w, 'nik');
             
-            // PERBAIKAN: Normalisasi string pencarian untuk menghindari kesalahan case-sensitive
-            const laki = dbWarga.filter(x => {
-                const val = String(x["Jenis Kelamin"] || "").toLowerCase();
-                return val === 'laki-laki' || val === 'l';
-            }).length;
-            
-            const perempuan = dbWarga.filter(x => {
-                const val = String(x["Jenis Kelamin"] || "").toLowerCase();
-                return val === 'perempuan' || val === 'p';
-            }).length;
-            
-            const tetap = dbWarga.filter(x => {
-                const val = String(x["Status Tinggal"] || "").toLowerCase();
-                return val === 'tetap';
-            }).length;
-            
-            document.getElementById('stat-total').innerText = total;
-            document.getElementById('stat-laki').innerText = laki;
-            document.getElementById('stat-perempuan').innerText = perempuan;
-            document.getElementById('stat-tetap').innerText = tetap;
+            document.getElementById('detailBadges').innerHTML = `
+                <span class="px-2 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold uppercase">${getVal(w, 'status keluarga')}</span>
+                <span class="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-bold uppercase">${getVal(w, 'status tinggal')}</span>
+            `;
 
-            // Update Recent List
-            const recentList = document.getElementById('recentWargaList');
-            recentList.innerHTML = dbWarga.slice(-6).reverse().map(w => `
-                <div class="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition cursor-pointer" onclick="showDetail('${w.NIK}')">
-                    <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><i data-lucide="user" class="w-5 h-5"></i></div>
-                    <div class="flex-1">
-                        <p class="font-bold text-slate-800 text-sm">${w.Nama}</p>
-                        <p class="text-[10px] text-slate-400 font-mono">${w.NIK}</p>
+            const fields = [
+                {l:'No KK', v:getVal(w, 'no kk'), i:'credit-card', k:'No KK'},
+                {l:'Blok', v:getVal(w, 'blok'), i:'map', k:'Blok'},
+                {l:'Nomer', v:getVal(w, 'nomer'), i:'hash', k:'Nomer'},
+                {l:'RT', v:getVal(w, 'rt'), i:'navigation', k:'RT'},
+                {l:'Tgl Lahir', v:getVal(w, 'tanggal lahir'), i:'calendar', k:'Tanggal Lahir'},
+                {l:'Pekerjaan', v:getVal(w, 'pekerjaan'), i:'briefcase', k:'Pekerjaan'},
+                {l:'Status Keluarga', v:getVal(w, 'status keluarga'), i:'users-2', k:'Status Keluarga'},
+                {l:'Status Tinggal', v:getVal(w, 'status tinggal'), i:'home', k:'Status Tinggal'}
+            ];
+
+            document.getElementById('editForm').innerHTML = fields.map(f => `
+                <div class="flex flex-col gap-1 p-3 bg-slate-50 rounded-2xl border border-transparent transition-all focus-within:border-indigo-200 focus-within:bg-white focus-within:shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="${f.i}" class="w-3 h-3 text-slate-400"></i>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">${f.l}</label>
                     </div>
-                    <div class="flex flex-col items-end">
-                        <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">${w.Blok}/${w.Nomer}</span>
-                        <span class="text-[8px] font-bold text-indigo-400 mt-1">RT ${w.RT || '-'}</span>
-                    </div>
+                    <input type="text" name="${f.k}" value="${f.v}" readonly 
+                           class="text-xs font-bold text-slate-800 bg-transparent outline-none w-full px-1 py-0.5 rounded focus:ring-1 focus:ring-indigo-100">
                 </div>
             `).join('');
 
-            updateChart();
+            const fam = dbWarga.filter(x => getVal(x, 'no kk') === getVal(w, 'no kk') && getVal(x, 'nik') !== getVal(w, 'nik'));
+            const famSec = document.getElementById('detailFamilySection');
+            famSec.classList.toggle('hidden', fam.length === 0);
+            document.getElementById('detailFamilyGrid').innerHTML = fam.map(a => `
+                <div onclick="openWargaDetail('${getVal(a, 'nik')}')" class="p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-indigo-50 transition border border-transparent hover:border-indigo-100">
+                    <p class="text-xs font-bold truncate">${getVal(a, 'nama')}</p>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase">${getVal(a, 'status keluarga')}</p>
+                </div>
+            `).join('');
+
+            document.getElementById('modalDetail').classList.remove('hidden');
+            document.body.classList.add('modal-open');
             lucide.createIcons();
-        }
+        };
 
-        function updateChart() {
-            const ctxAgama = document.getElementById('agamaChart');
-            if(ctxAgama) {
-                const countsAgama = {};
-                dbWarga.forEach(w => countsAgama[w.Agama] = (countsAgama[w.Agama] || 0) + 1);
-                
-                if(chartInstance) chartInstance.destroy();
-                chartInstance = new Chart(ctxAgama, {
-                    type: 'doughnut',
-                    data: {
-                        labels: Object.keys(countsAgama),
-                        datasets: [{
-                            data: Object.values(countsAgama),
-                            backgroundColor: ['#4f46e5', '#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#6366f1'],
-                            borderWidth: 0,
-                            hoverOffset: 10
-                        }]
-                    },
-                    options: {
-                        plugins: { legend: { position: 'right', labels: { usePointStyle: true, font: { weight: 'bold' } } } },
-                        maintainAspectRatio: false,
-                        cutout: '75%'
-                    }
-                });
-            }
+        const toggleEditMode = () => {
+            isEditMode = !isEditMode;
+            updateModalUI();
+        };
 
-            const ctxRT = document.getElementById('rtChart');
-            if(ctxRT) {
-                const countsRT = {};
-                dbWarga.forEach(w => {
-                    const label = w.RT ? `RT ${w.RT}` : 'Belum Set';
-                    countsRT[label] = (countsRT[label] || 0) + 1;
-                });
-                
-                const sortedLabels = Object.keys(countsRT).sort();
-                const sortedData = sortedLabels.map(label => countsRT[label]);
+        const updateModalUI = () => {
+            const inputs = document.querySelectorAll('#modalDetail input');
+            const btnEdit = document.getElementById('btnEdit');
+            const btnSave = document.getElementById('btnSaveEdit');
+            const title = document.getElementById('modalTitle');
 
-                if(rtChartInstance) rtChartInstance.destroy();
-                rtChartInstance = new Chart(ctxRT, {
-                    type: 'bar',
-                    data: {
-                        labels: sortedLabels,
-                        datasets: [{
-                            label: 'Jumlah Warga',
-                            data: sortedData,
-                            backgroundColor: '#4f46e5',
-                            borderRadius: 8,
-                            maxBarThickness: 40
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { beginAtZero: true, grid: { display: false }, ticks: { stepSize: 1 } },
-                            x: { grid: { display: false } }
-                        }
-                    }
-                });
-            }
-        }
+            title.innerText = isEditMode ? "Edit Profil Warga" : "Detail Profil";
+            btnEdit.classList.toggle('hidden', isEditMode);
+            btnSave.classList.toggle('hidden', !isEditMode);
 
-        function renderWarga(data = dbWarga) {
-            const table = document.getElementById('wargaTableBody');
-            const cards = document.getElementById('wargaCards');
+            inputs.forEach(inp => {
+                if (inp.id === 'editNik' && isEditMode) return; // NIK biasanya tidak diubah karena primary key
+                inp.readOnly = !isEditMode;
+                if (isEditMode) {
+                    inp.parentElement.classList.add('ring-1', 'ring-indigo-100', 'bg-white');
+                } else {
+                    inp.parentElement.classList.remove('ring-1', 'ring-indigo-100', 'bg-white');
+                }
+            });
+        };
+
+        const saveWargaEdit = async () => {
+            const formData = new FormData(document.getElementById('editForm'));
+            const data = Object.fromEntries(formData.entries());
+            data.Nama = document.getElementById('editNama').value;
+            data.NIK = document.getElementById('editNik').value;
+
+            setLoading(true, "Menyimpan Perubahan...");
             
-            table.innerHTML = data.map(w => `
-                <tr class="hover:bg-indigo-50/30 transition group">
-                    <td class="px-8 py-5">
-                        <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition shadow-sm"><i data-lucide="user" class="w-5 h-5"></i></div>
-                            <div><p class="font-bold text-slate-900">${w.Nama}</p><p class="text-[10px] text-slate-400 font-mono">${w.NIK}</p></div>
+            // Simulasikan Update (Karena script Google Apps Script butuh parameter spesifik)
+            // Di sini kita mengirim parameter action 'updateWarga' 
+            const result = await fetchAPI('updateWarga', data);
+            
+            if (result && result.status === "success") {
+                await syncData(); // Refresh data lokal
+                isEditMode = false;
+                updateModalUI();
+                setLoading(false);
+            } else {
+                setLoading(false);
+                alert("Gagal menyimpan data. Pastikan koneksi internet stabil.");
+            }
+        };
+
+        const closeModal = () => {
+            document.getElementById('modalDetail').classList.add('hidden');
+            document.body.classList.remove('modal-open');
+        };
+
+        const renderTable = (data) => {
+            document.getElementById('wargaTableBody').innerHTML = data.map(w => `
+                <tr class="hover:bg-slate-50 cursor-pointer transition" onclick="openWargaDetail('${getVal(w, 'nik')}')">
+                    <td class="p-4"><p class="font-bold text-sm text-slate-800">${getVal(w, 'nama')}</p><p class="text-[10px] text-slate-400 font-mono">${getVal(w, 'nik')}</p></td>
+                    <td class="p-4"><p class="text-xs font-bold text-slate-600">Blok ${getVal(w, 'blok')} No. ${getVal(w, 'nomer')}</p><p class="text-[10px] text-slate-400 uppercase">RT ${getVal(w, 'rt')}</p></td>
+                    <td class="p-4 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                             <button class="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 flex items-center justify-center transition">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                             </button>
                         </div>
-                    </td>
-                    <td class="px-8 py-5 font-bold text-slate-500">Blok ${w.Blok} No. ${w.Nomer} (RT ${w.RT || '-'})</td>
-                    <td class="px-8 py-5">
-                        <span class="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest ${String(w["Status Tinggal"]).toLowerCase() === 'tetap' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}">${w["Status Tinggal"]}</span>
-                    </td>
-                    <td class="px-8 py-5 text-right">
-                        <button onclick="showDetail('${w.NIK}')" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition"><i data-lucide="eye" class="w-5 h-5"></i></button>
-                        <button onclick="deleteWarga('${w.NIK}')" class="p-2 text-red-500 hover:bg-red-50 rounded-xl transition ml-1"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                     </td>
                 </tr>
             `).join('');
+            lucide.createIcons();
+        };
 
-            cards.innerHTML = data.map(w => `
-                <div class="bg-white p-6 rounded-[2rem] card-shadow border border-slate-50 flex items-center justify-between" onclick="showDetail('${w.NIK}')">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center"><i data-lucide="user" class="w-6 h-6"></i></div>
-                        <div>
-                            <h4 class="font-extrabold text-slate-900">${w.Nama}</h4>
-                            <p class="text-xs font-bold text-slate-400">${w.Blok}/${w.Nomer} • RT ${w.RT || '-'} • ${w["Status Tinggal"]}</p>
-                        </div>
+        const filterData = (type) => {
+            const q = document.getElementById(type === 'warga' ? 'searchWarga' : 'searchKK').value.toLowerCase();
+            const filtered = dbWarga.filter(w => getVal(w, 'nama').toLowerCase().includes(q) || getVal(w, 'nik').includes(q) || getVal(w, 'no kk').includes(q));
+            type === 'warga' ? renderTable(filtered) : renderKK(filtered);
+        };
+
+        const renderKK = (data) => {
+            const listKK = data.filter(w => getVal(w, 'status keluarga').toLowerCase().includes('kepala'));
+            document.getElementById('kkContainer').innerHTML = listKK.map(kk => {
+                const count = dbWarga.filter(x => getVal(x, 'no kk') === getVal(kk, 'no kk')).length;
+                return `
+                <div class="bg-white p-5 rounded-3xl border hover:border-indigo-200 cursor-pointer transition shadow-sm hover:shadow-md" onclick="openWargaDetail('${getVal(kk, 'nik')}')">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center"><i data-lucide="user-square"></i></div>
+                        <span class="px-3 py-1 bg-indigo-600 text-white rounded-full text-[9px] font-bold uppercase tracking-wider">${count} Anggota</span>
                     </div>
-                    <i data-lucide="chevron-right" class="w-5 h-5 text-slate-300"></i>
+                    <h4 class="font-bold text-slate-800 truncate">${getVal(kk, 'nama')}</h4>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">NO KK: ${getVal(kk, 'no kk')}</p>
+                </div>
+            `;
+            }).join('');
+            lucide.createIcons();
+        };
+
+        const syncData = async () => {
+            setLoading(true, "Sinkronisasi Data...");
+            const data = await fetchAPI('getWarga');
+            if(data) {
+                dbWarga = data;
+                renderTable(dbWarga);
+                renderKK(dbWarga);
+                updateStats();
+                updateChart();
+            }
+            setLoading(false);
+        };
+
+        const updateStats = () => {
+            const stats = [
+                {l:'Total Warga', v:dbWarga.length, i:'users', c:'indigo'},
+                {l:'Rumah Isi', v:new Set(dbWarga.map(w => getVal(w, 'blok')+getVal(w, 'nomer'))).size, i:'home', c:'emerald'},
+                {l:'Warga Tetap', v:dbWarga.filter(w => getVal(w, 'status tinggal') === 'Tetap').length, i:'user-check', c:'blue'},
+                {l:'Warga Kontrak', v:dbWarga.filter(w => getVal(w, 'status tinggal') === 'Kontrak').length, i:'user-minus', c:'amber'}
+            ];
+            document.getElementById('statGrid').innerHTML = stats.map(s => `
+                <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+                    <div class="w-8 h-8 bg-${s.c}-50 text-${s.c}-600 rounded-xl flex items-center justify-center mb-3"><i data-lucide="${s.i}" class="w-4 h-4"></i></div>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${s.l}</p>
+                    <h3 class="text-xl font-extrabold text-slate-800">${s.v}</h3>
                 </div>
             `).join('');
             
-            lucide.createIcons();
-        }
-
-        function showDetail(nik) {
-            const w = dbWarga.find(x => x.NIK == nik);
-            if(!w) return;
-            
-            document.getElementById('m_nama').innerText = w.Nama;
-            document.getElementById('m_nik').innerText = "NIK: " + w.NIK;
-            document.getElementById('m_alamat').innerText = `Blok ${w.Blok} No. ${w.Nomer} (RT ${w.RT || '-'})`;
-            document.getElementById('m_gender').innerText = w["Jenis Kelamin"];
-            document.getElementById('m_agama').innerText = w.Agama;
-            
-            const statusBadge = document.getElementById('m_status');
-            statusBadge.innerText = w["Status Tinggal"];
-            statusBadge.className = `px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest ${String(w["Status Tinggal"]).toLowerCase() === 'tetap' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`;
-            
-            document.getElementById('btnEditModal').onclick = () => { closeModal(); editWarga(w.NIK); };
-
-            const modal = document.getElementById('detailModal');
-            const content = document.getElementById('modalContent');
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                content.classList.remove('scale-95', 'opacity-0');
-            }, 10);
-            lucide.createIcons();
-        }
-
-        function closeModal() {
-            const content = document.getElementById('modalContent');
-            content.classList.add('scale-95', 'opacity-0');
-            setTimeout(() => {
-                document.getElementById('detailModal').classList.add('hidden');
-            }, 300);
-        }
-
-        document.getElementById('wargaForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const payload = {
-                nik: document.getElementById('f_nik').value,
-                nama: document.getElementById('f_nama').value,
-                kelamin: document.getElementById('f_kelamin').value,
-                agama: document.getElementById('f_agama').value,
-                rt: document.getElementById('f_rt').value,
-                blok: document.getElementById('f_blok').value,
-                nomer: document.getElementById('f_nomer').value,
-                status_tinggal: document.getElementById('f_status_tinggal').value
-            };
-
-            setLoading(true, "Menyimpan Data...");
-            const action = isEditing ? 'editWarga' : 'addWarga';
-            await fetchAPI(action, isEditing ? { nik: document.getElementById('editNik').value, payload } : { payload }, 'POST');
-            
-            showToast(isEditing ? "Data Warga Diperbarui" : "Warga Berhasil Ditambah");
-            isEditing = false;
-            e.target.reset();
-            showPage('dataWarga');
-            await syncData();
-            setLoading(false);
-        });
-
-        function editWarga(nik) {
-            const w = dbWarga.find(x => x.NIK == nik);
-            if(!w) return;
-            isEditing = true;
-            document.getElementById('editNik').value = nik;
-            document.getElementById('f_nik').value = w.NIK;
-            document.getElementById('f_nama').value = w.Nama;
-            document.getElementById('f_rt').value = w.RT || '';
-            document.getElementById('f_blok').value = w.Blok;
-            document.getElementById('f_nomer').value = w.Nomer;
-            document.getElementById('f_kelamin').value = w["Jenis Kelamin"];
-            document.getElementById('f_agama').value = w.Agama;
-            document.getElementById('f_status_tinggal').value = w["Status Tinggal"];
-            showPage('formWarga');
-        }
-
-        async function deleteWarga(nik) {
-            if(confirm("Apakah Anda yakin ingin menghapus data warga ini?")) {
-                setLoading(true, "Menghapus...");
-                await fetchAPI('deleteWarga', { nik }, 'POST');
-                showToast("Data Terhapus");
-                await syncData();
-                setLoading(false);
-            }
-        }
-
-        function showPage(id) {
-            document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
-            document.getElementById('page-' + id).classList.remove('hidden');
-            document.getElementById('pageTitle').innerText = id === 'dashboard' ? 'Dashboard' : (id === 'dataWarga' ? 'Data Warga' : 'Formulir Warga');
-            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.page === id));
-            document.querySelectorAll('.mobile-nav').forEach(btn => btn.classList.toggle('text-indigo-600', btn.dataset.page === id));
-        }
-
-        function filterWarga() {
-            const q = document.getElementById('searchWarga').value.toLowerCase();
-            const filtered = dbWarga.filter(w => (w.Nama && w.Nama.toLowerCase().includes(q)) || (w.NIK && w.NIK.toString().includes(q)));
-            renderWarga(filtered);
-        }
-
-        function setLoading(show, text) {
-            document.getElementById('loadingText').innerText = text || "Tunggu Sebentar...";
-            document.getElementById('loadingOverlay').classList.toggle('hidden', !show);
-        }
-
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            document.getElementById('toastMsg').innerText = msg;
-            t.classList.remove('-translate-y-24', 'opacity-0');
-            setTimeout(() => t.classList.add('-translate-y-24', 'opacity-0'), 3000);
-        }
-
-        function logout() { location.reload(); }
-
-        window.onload = () => {
-            document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-            init();
+            const latest = [...dbWarga].reverse().slice(0, 4);
+            document.getElementById('recentWargaList').innerHTML = latest.map(w => `
+                <div class="flex items-center gap-3 p-3 bg-slate-50 hover:bg-white border border-transparent hover:border-slate-100 rounded-2xl cursor-pointer transition shadow-sm" onclick="openWargaDetail('${getVal(w, 'nik')}')">
+                    <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-indigo-500 border border-slate-100 shadow-sm"><i data-lucide="user" class="w-5 h-5"></i></div>
+                    <div class="flex-1 min-w-0"><p class="text-xs font-bold text-slate-800 truncate">${getVal(w, 'nama')}</p><p class="text-[9px] font-bold text-slate-400">Blok ${getVal(w, 'blok')} - RT ${getVal(w, 'rt')}</p></div>
+                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-300"></i>
+                </div>
+            `).join('');
             lucide.createIcons();
         };
+
+        const updateChart = () => {
+            const rtCounts = {};
+            dbWarga.forEach(w => { const rt = getVal(w, 'rt'); if(rt) rtCounts[rt] = (rtCounts[rt] || 0) + 1; });
+            if(charts.rt) charts.rt.destroy();
+            const ctx = document.getElementById('chartRT').getContext('2d');
+            charts.rt = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(rtCounts).sort().map(k => `RT ${k}`),
+                    datasets: [{ label: 'Warga', data: Object.keys(rtCounts).sort().map(k => rtCounts[k]), backgroundColor: '#6366f1', borderRadius: 8, barThickness: 20 }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } },
+                    plugins: { legend: { display: false } } 
+                }
+            });
+        };
+
+        const setLoading = (s, t) => {
+            const l = document.getElementById('loadingOverlay');
+            l.classList.toggle('hidden', !s);
+            if(t) document.getElementById('loadingText').innerText = t;
+        };
+
+        document.getElementById('loginForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('username').value, p = document.getElementById('password').value;
+            const user = dbUsers.find(x => getVal(x, 'username') === u && getVal(x, 'password') === p);
+            if(user) {
+                document.getElementById('loginPage').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                syncData();
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        };
+
+        document.getElementById('addWargaForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            setLoading(true, "Menambahkan Warga...");
+            const res = await fetchAPI('addWarga', data);
+            if(res && res.status === "success") {
+                e.target.reset();
+                showPage('dataWarga');
+                await syncData();
+            } else {
+                alert("Gagal menambahkan data.");
+            }
+            setLoading(false);
+        };
+
+        const init = async () => {
+            setLoading(true, "Menghubungkan Server...");
+            const users = await fetchAPI('getUsers');
+            if(users) dbUsers = users;
+            setLoading(false);
+            lucide.createIcons();
+        };
+
+        const logout = () => location.reload();
+        init();
     </script>
 </body>
 </html>
