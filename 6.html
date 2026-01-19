@@ -33,6 +33,7 @@
         };
 
         const App = () => {
+            // State utama aplikasi
             const [view, setView] = useState('login'); 
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(false);
@@ -42,70 +43,34 @@
             const [selectedWarga, setSelectedWarga] = useState(null);
             const [authForm, setAuthForm] = useState({ username: '', password: '' });
 
-            // Fungsi API yang diperbarui untuk memperbaiki error "Failed to fetch"
-            const callAPI = async (payload) => {
-                setLoading(true);
-                try {
-                    // Menggunakan format teks biasa untuk menghindari preflight CORS yang ketat
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        mode: 'no-cors', // Mencoba mode no-cors jika cors murni gagal
-                        headers: {
-                            'Content-Type': 'text/plain'
-                        },
-                        body: JSON.stringify(payload)
-                    });
-
-                    // Catatan: Dalam mode 'no-cors', kita tidak bisa membaca isi body response.
-                    // Namun, untuk Google Apps Script, biasanya kita memerlukan response JSON.
-                    // Jika no-cors gagal memberikan data, kita kembali ke cors dengan penanganan error.
-                    
-                    setLoading(false);
-                    // Karena ini simulasi integrasi, jika mode no-cors aktif, 
-                    // kita anggap sukses jika tidak ada error lemparan fetch.
-                    return { success: true }; 
-                } catch (error) {
-                    // Jika no-cors pun gagal, coba dengan fetch standar tapi tanpa header kompleks
-                    try {
-                        const simpleRes = await fetch(API_URL + "?action=" + payload.action, {
-                            method: 'POST',
-                            body: JSON.stringify(payload)
-                        });
-                        const data = await simpleRes.json();
-                        setLoading(false);
-                        return data;
-                    } catch (err2) {
-                        console.error("Kesalahan API:", err2);
-                        setLoading(false);
-                        return null;
-                    }
-                }
-            };
-
-            // Fungsi khusus untuk login yang mengharapkan data user balik
+            // Fungsi khusus untuk login
             const handleLogin = async (e) => {
                 e.preventDefault();
                 setLoading(true);
                 
                 try {
-                    // Menggunakan teknik pendeteksian redirect secara manual
-                    const res = await fetch(API_URL, {
+                    // Kirim request ke Google Apps Script
+                    const response = await fetch(API_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'text/plain' },
-                        body: JSON.stringify({ action: 'login', username: authForm.username, password: authForm.password })
+                        body: JSON.stringify({ 
+                            action: 'login', 
+                            username: authForm.username, 
+                            password: authForm.password 
+                        })
                     });
                     
-                    const data = await res.json();
+                    const data = await response.json();
                     if (data && data.success) {
                         setUser(data.user);
                         setView('dashboard');
                         fetchData();
                     } else {
-                        alert("Login gagal. Periksa username dan password.");
+                        alert("Login gagal. Periksa kembali username dan password Anda.");
                     }
                 } catch (err) {
                     console.error("Login Error:", err);
-                    alert("Gagal terhubung ke server. Pastikan skrip Google sudah di-deploy dengan benar.");
+                    alert("Gagal terhubung ke server. Pastikan Apps Script sudah aktif.");
                 } finally {
                     setLoading(false);
                 }
@@ -136,6 +101,7 @@
                 return matchSearch && matchRT;
             });
 
+            // RENDER HALAMAN LOGIN
             if (view === 'login') {
                 return (
                     <div className="min-h-screen flex items-center justify-center p-6 bg-slate-900">
@@ -150,24 +116,38 @@
                             <form onSubmit={handleLogin} className="space-y-4">
                                 <div>
                                     <label className="text-xs font-bold uppercase text-slate-400 ml-1">Nama Pengguna</label>
-                                    <input type="text" required className="w-full mt-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" onChange={e => setAuthForm({...authForm, username: e.target.value})} />
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        className="w-full mt-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" 
+                                        onChange={e => setAuthForm({...authForm, username: e.target.value})} 
+                                    />
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold uppercase text-slate-400 ml-1">Kata Sandi</label>
-                                    <input type="password" required className="w-full mt-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" onChange={e => setAuthForm({...authForm, password: e.target.value})} />
+                                    <input 
+                                        type="password" 
+                                        required 
+                                        className="w-full mt-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" 
+                                        onChange={e => setAuthForm({...authForm, password: e.target.value})} 
+                                    />
                                 </div>
-                                <button disabled={loading} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition disabled:opacity-50">
+                                <button 
+                                    disabled={loading} 
+                                    className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition disabled:opacity-50"
+                                >
                                     {loading ? "Menghubungkan..." : "Masuk"}
                                 </button>
-                                <p className="text-[10px] text-center text-slate-400 mt-2">
-                                    Gunakan HTTPS dan pastikan Apps Script dipublish sebagai 'Anyone'.
-                                </p>
+                                <div className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100 text-[10px] text-blue-600 leading-relaxed text-center">
+                                    <p>Pastikan Google Apps Script di-deploy sebagai 'Web App' dengan akses 'Anyone'.</p>
+                                </div>
                             </form>
                         </div>
                     </div>
                 );
             }
 
+            // RENDER HALAMAN DASHBOARD / DATA
             return (
                 <div className="min-h-screen pb-24">
                     <header className="glass-effect sticky top-0 z-30 px-6 py-4 flex justify-between items-center border-b border-slate-200">
@@ -177,7 +157,7 @@
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-bold uppercase">{user?.role || 'User'}</span>
-                            <button onClick={() => window.location.reload()} className="p-2 text-slate-400"><Icon name="log-out" size={18} /></button>
+                            <button onClick={() => setView('login')} className="p-2 text-slate-400"><Icon name="log-out" size={18} /></button>
                         </div>
                     </header>
 
