@@ -32,16 +32,16 @@
                     <i data-lucide="shield-check" size="32"></i>
                 </div>
                 <h1 class="text-2xl font-black text-slate-800 tracking-tight">Puri Agung 2</h1>
-                <p class="text-slate-500 text-sm">Sistem Informasi Manajemen Warga</p>
+                <p class="text-slate-500 text-sm">Manajemen Data Warga</p>
             </div>
             <form id="loginForm" class="space-y-4">
                 <div>
                     <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400 ml-1">Username</label>
-                    <input type="text" id="username" required class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="Masukkan username">
+                    <input type="text" id="username" required class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Admin">
                 </div>
                 <div>
                     <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400 ml-1">Password</label>
-                    <input type="password" id="password" required class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="••••••••">
+                    <input type="password" id="password" required class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="••••••••">
                 </div>
                 <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-xl shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all">
                     Masuk Sekarang
@@ -50,27 +50,25 @@
         </div>
     </div>
 
-    <!-- Main Dashboard -->
+    <!-- Main Content -->
     <div id="mainContent" class="hidden min-h-screen flex">
+        <!-- Sidebar and Content here (Same as before) -->
         <aside class="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col">
             <div class="p-6 border-b border-slate-100 flex items-center gap-3">
                 <div class="bg-indigo-600 p-2 rounded-lg text-white"><i data-lucide="home"></i></div>
-                <span class="font-bold text-lg tracking-tight">PuriAgung2</span>
+                <span class="font-bold text-lg">PuriAgung2</span>
             </div>
             <nav class="flex-1 py-4">
-                <button onclick="showPage('dashboard')" class="sidebar-item w-full px-6 py-4 flex items-center gap-4 text-slate-500 hover:bg-slate-50 transition-all font-medium">
+                <button onclick="showPage('dashboard')" class="sidebar-item w-full px-6 py-4 flex items-center gap-4 text-slate-500 hover:bg-slate-50 font-medium">
                     <i data-lucide="layout-dashboard"></i> Dashboard
                 </button>
-                <button onclick="showPage('dataWarga')" class="sidebar-item w-full px-6 py-4 flex items-center gap-4 text-slate-500 hover:bg-slate-50 transition-all font-medium">
+                <button onclick="showPage('dataWarga')" class="sidebar-item w-full px-6 py-4 flex items-center gap-4 text-slate-500 hover:bg-slate-50 font-medium">
                     <i data-lucide="users"></i> Data Warga
-                </button>
-                <button onclick="showPage('tambahWarga')" class="sidebar-item w-full px-6 py-4 flex items-center gap-4 text-slate-500 hover:bg-slate-50 transition-all font-medium">
-                    <i data-lucide="user-plus"></i> Tambah Warga
                 </button>
             </nav>
             <div class="p-6 border-t border-slate-100">
-                <button onclick="logout()" class="flex items-center gap-3 text-red-500 font-bold text-sm hover:translate-x-1 transition-all">
-                    <i data-lucide="log-out"></i> Keluar Sistem
+                <button onclick="location.reload()" class="text-red-500 font-bold text-sm flex items-center gap-2">
+                    <i data-lucide="log-out"></i> Keluar
                 </button>
             </div>
         </aside>
@@ -78,93 +76,88 @@
         <main class="flex-1 flex flex-col min-w-0">
             <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6">
                 <h2 id="pageTitle" class="font-bold text-slate-800">Dashboard</h2>
-                <div class="flex items-center gap-4">
-                    <span id="userBadge" class="text-xs font-bold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">Admin</span>
-                </div>
+                <span class="text-xs font-bold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">Admin Terverifikasi</span>
             </header>
             <div id="pageContainer" class="p-6 overflow-y-auto flex-1"></div>
         </main>
     </div>
 
     <script>
+        // UPDATE: Ganti dengan URL Deployment terbaru Anda jika sudah update doGet di GAS
         const API_URL = "https://script.google.com/macros/s/AKfycbw_1NS4tKBP8nZPuJInNvbo72zG8GKJI8xzl1TEKsHugg7UwAZT-fqbMgJEPEDfykPx0Q/exec";
         let currentUser = null;
         let wargaData = [];
 
-        lucide.createIcons();
+        window.onload = () => {
+            lucide.createIcons();
+            initLogin();
+        };
 
-        /**
-         * Fungsi fetchAPI diperbarui menggunakan teknik JSONP
-         * JSONP melewati batasan CORS dengan memuat data via tag <script>
-         */
         function fetchAPI(action, params = {}) {
-            return new Promise((resolve, reject) => {
-                const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
-                
-                // Set timeout 30 detik
-                const timeoutId = setTimeout(() => {
-                    delete window[callbackName];
-                    resolve({ success: false, message: "Koneksi ke server terputus (Timeout)." });
-                }, 30000);
+            return new Promise((resolve) => {
+                const callbackName = 'callback_' + Math.round(1000000 * Math.random());
+                const script = document.createElement('script');
+                script.id = callbackName;
 
-                window[callbackName] = function(data) {
-                    clearTimeout(timeoutId);
-                    document.body.removeChild(script);
-                    delete window[callbackName];
+                const timeout = setTimeout(() => {
+                    cleanup();
+                    resolve({ success: false, message: "Koneksi Timeout (Pastikan GAS sudah dideploy ke 'Anyone')" });
+                }, 15000);
+
+                window[callbackName] = (data) => {
+                    clearTimeout(timeout);
+                    cleanup();
                     resolve(data);
                 };
 
-                const queryParams = new URLSearchParams({
+                const cleanup = () => {
+                    const sc = document.getElementById(callbackName);
+                    if (sc) document.body.removeChild(sc);
+                    delete window[callbackName];
+                };
+
+                const query = new URLSearchParams({
                     action: action,
                     callback: callbackName,
-                    _t: new Date().getTime(),
                     ...params
                 });
 
-                const script = document.createElement('script');
-                script.src = `${API_URL}?${queryParams.toString()}`;
+                script.src = `${API_URL}?${query.toString()}`;
                 script.onerror = () => {
-                    clearTimeout(timeoutId);
-                    resolve({ success: false, message: "Gagal memuat skrip API (CORS/Network Error)." });
+                    clearTimeout(timeout);
+                    cleanup();
+                    resolve({ success: false, message: "Gagal memuat API (Periksa URL GAS)" });
                 };
                 document.body.appendChild(script);
             });
         }
 
-        function setLoading(show, text = "Mohon Tunggu...") {
-            const overlay = document.getElementById('loadingOverlay');
-            if (overlay) {
-                document.getElementById('loadingText').innerText = text;
-                overlay.classList.toggle('hidden', !show);
-            }
+        function initLogin() {
+            document.getElementById('loginForm').onsubmit = async (e) => {
+                e.preventDefault();
+                const u = document.getElementById('username').value;
+                const p = document.getElementById('password').value;
+                
+                setLoading(true, "Mengecek Kredensial...");
+                const res = await fetchAPI('login', { username: u, password: p });
+                
+                if (res && res.success) {
+                    currentUser = res.user;
+                    document.getElementById('loginPage').classList.add('hidden');
+                    document.getElementById('mainContent').classList.remove('hidden');
+                    await refreshData();
+                    showPage('dashboard');
+                } else {
+                    alert(res.message || "Gagal Login");
+                }
+                setLoading(false);
+            };
         }
 
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const user = document.getElementById('username').value;
-            const pass = document.getElementById('password').value;
-            
-            setLoading(true, "Memverifikasi...");
-            const res = await fetchAPI('login', { username: user, password: pass });
-            
-            if (res && res.success) {
-                currentUser = res.user;
-                document.getElementById('loginPage').classList.add('hidden');
-                document.getElementById('mainContent').classList.remove('hidden');
-                await syncData();
-                showPage('dashboard');
-            } else {
-                alert(res.message || "Username atau Password salah!");
-            }
-            setLoading(false);
-        });
-
-        async function syncData() {
-            setLoading(true, "Sinkronisasi Data...");
+        async function refreshData() {
+            setLoading(true, "Memperbarui Data...");
             const res = await fetchAPI('getAllWarga');
-            if (res) {
-                wargaData = Array.isArray(res) ? res : (res.data || []);
-            }
+            wargaData = Array.isArray(res) ? res : [];
             setLoading(false);
         }
 
@@ -172,182 +165,34 @@
             const container = document.getElementById('pageContainer');
             document.getElementById('pageTitle').innerText = pageId.toUpperCase();
             
-            document.querySelectorAll('.sidebar-item').forEach(btn => {
-                const btnText = btn.innerText.toLowerCase();
-                if(btnText.includes(pageId.toLowerCase().replace('data', ''))) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-
-            if (pageId === 'dashboard') renderDashboard();
-            else if (pageId === 'dataWarga') renderDataWarga();
-            else if (pageId === 'tambahWarga') renderTambahWarga();
-        }
-
-        function renderDashboard() {
-            const container = document.getElementById('pageContainer');
-            const totalWarga = wargaData.length;
-            const pria = wargaData.filter(w => String(w.Kelamin || '').toLowerCase().startsWith('l')).length;
-            const wanita = totalWarga - pria;
-
-            container.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Warga</p>
-                        <h3 class="text-3xl font-black text-slate-800 mt-1">${totalWarga}</h3>
+            if (pageId === 'dashboard') {
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                            <h4 class="text-slate-400 text-xs font-bold uppercase tracking-widest">Total Warga</h4>
+                            <p class="text-4xl font-black text-indigo-600 mt-2">${wargaData.length}</p>
+                        </div>
                     </div>
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-blue-400">Laki-Laki</p>
-                        <h3 class="text-3xl font-black text-blue-600 mt-1">${pria}</h3>
-                    </div>
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-pink-400">Perempuan</p>
-                        <h3 class="text-3xl font-black text-pink-600 mt-1">${wanita}</h3>
-                    </div>
-                </div>
-                <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
-                    <h3 class="font-bold mb-4">Statistik Pertumbuhan</h3>
-                    <div class="h-64"><canvas id="myChart"></canvas></div>
-                </div>
-            `;
-            
-            const canvas = document.getElementById('myChart');
-            if (canvas) {
-                const ctx = canvas.getContext('2d');
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
-                        datasets: [{
-                            label: 'Warga Baru',
-                            data: [12, 19, 3, 5, 2, 3],
-                            borderColor: '#4338ca',
-                            tension: 0.4,
-                            fill: true,
-                            backgroundColor: 'rgba(67, 56, 202, 0.05)'
-                        }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-                });
-            }
-        }
-
-        function renderDataWarga() {
-            const container = document.getElementById('pageContainer');
-            container.innerHTML = `
-                <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="p-6 border-b border-slate-50 flex justify-between items-center">
-                        <h3 class="font-bold">Daftar Seluruh Warga</h3>
-                        <input type="text" oninput="filterWarga(this.value)" placeholder="Cari warga..." class="bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-slate-50 text-slate-400 uppercase text-[10px] font-bold tracking-widest">
-                                <tr>
-                                    <th class="px-6 py-4">Nama Lengkap</th>
-                                    <th class="px-6 py-4">NIK</th>
-                                    <th class="px-6 py-4">RT</th>
-                                    <th class="px-6 py-4 text-right">Aksi</th>
-                                </tr>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                <tr><th class="p-6">Nama</th><th class="p-6">NIK</th><th class="p-6">RT</th></tr>
                             </thead>
-                            <tbody id="wargaTableBody" class="divide-y divide-slate-50">
-                                ${renderTableRows(wargaData)}
+                            <tbody class="divide-y divide-slate-50">
+                                ${wargaData.map(w => `<tr><td class="p-6 font-bold">${w.Nama}</td><td class="p-6">${w.NIK}</td><td class="p-6">RT ${w.RT}</td></tr>`).join('')}
                             </tbody>
                         </table>
                     </div>
-                </div>
-            `;
-            lucide.createIcons();
-        }
-
-        function renderTableRows(data) {
-            if (!data || data.length === 0) return '<tr><td colspan="4" class="p-10 text-center text-slate-400 italic">Tidak ada data ditemukan</td></tr>';
-            return data.map(w => `
-                <tr class="hover:bg-slate-50/50 transition-colors">
-                    <td class="px-6 py-4 font-bold text-slate-700">${w.Nama || '-'}</td>
-                    <td class="px-6 py-4 text-slate-500">${w.NIK || '-'}</td>
-                    <td class="px-6 py-4">RT 0${w.RT || '0'}</td>
-                    <td class="px-6 py-4 text-right">
-                        <button onclick="deleteWarga('${w.NIK}')" class="text-red-400 hover:text-red-600 p-2"><i data-lucide="trash-2"></i></button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function filterWarga(val) {
-            const filtered = wargaData.filter(w => 
-                (w.Nama || '').toLowerCase().includes(val.toLowerCase()) || 
-                (w.NIK || '').toString().includes(val)
-            );
-            document.getElementById('wargaTableBody').innerHTML = renderTableRows(filtered);
-            lucide.createIcons();
-        }
-
-        function renderTambahWarga() {
-            const container = document.getElementById('pageContainer');
-            container.innerHTML = `
-                <div class="max-w-2xl mx-auto bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
-                    <h3 class="font-bold mb-6">Formulir Warga Baru</h3>
-                    <form id="addWargaForm" class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="col-span-2">
-                                <label class="text-[10px] font-bold uppercase text-slate-400">Nama Lengkap</label>
-                                <input name="Nama" required class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold uppercase text-slate-400">NIK (16 Digit)</label>
-                                <input name="NIK" required maxlength="16" class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold uppercase text-slate-400">RT</label>
-                                <select name="RT" class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl outline-none">
-                                    <option value="1">RT 01</option>
-                                    <option value="2">RT 02</option>
-                                    <option value="3">RT 03</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold mt-6 shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">Simpan Data</button>
-                    </form>
-                </div>
-            `;
-
-            document.getElementById('addWargaForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const obj = Object.fromEntries(formData.entries());
-                
-                setLoading(true, "Menyimpan...");
-                const res = await fetchAPI('addWarga', { payload: JSON.stringify(obj) });
-                
-                if (res && res.success) {
-                    alert("Data berhasil disimpan!");
-                    await syncData();
-                    showPage('dataWarga');
-                } else {
-                    alert(res.message || "Gagal menyimpan data.");
-                }
-                setLoading(false);
-            });
-        }
-
-        async function deleteWarga(nik) {
-            if(!confirm("Anda yakin ingin menghapus data warga ini?")) return;
-            setLoading(true, "Menghapus...");
-            const res = await fetchAPI('deleteWarga', { nik: nik });
-            if(res && res.success) {
-                await syncData();
-                renderDataWarga();
-            } else {
-                alert(res.message || "Gagal menghapus data.");
+                `;
             }
-            setLoading(false);
         }
 
-        function logout() {
-            if(confirm("Keluar dari sistem?")) location.reload();
+        function setLoading(s, t) {
+            document.getElementById('loadingText').innerText = t;
+            document.getElementById('loadingOverlay').classList.toggle('hidden', !s);
         }
     </script>
 </body>
