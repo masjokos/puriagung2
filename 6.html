@@ -24,7 +24,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        // URL Web App dari Google Apps Script
+        // URL Web App dari Google Apps Script sesuai permintaan user
         const API_URL = "https://script.google.com/macros/s/AKfycbw_1NS4tKBP8nZPuJInNvbo72zG8GKJI8xzl1TEKsHugg7UwAZT-fqbMgJEPEDfykPx0Q/exec";
 
         const Icon = ({ name, size = 20, className = "" }) => {
@@ -43,34 +43,40 @@
             const [selectedWarga, setSelectedWarga] = useState(null);
             const [authForm, setAuthForm] = useState({ username: '', password: '' });
 
-            // Fungsi khusus untuk login
+            // Fungsi login yang diperbarui untuk mengatasi masalah CORS/Redirect Google Script
             const handleLogin = async (e) => {
                 e.preventDefault();
                 setLoading(true);
                 
                 try {
-                    // Kirim request ke Google Apps Script
+                    // Menggunakan URLSearchParams agar Google Script menerima data sebagai form parameters
+                    // Ini cara paling aman untuk menghindari error preflight OPTIONS pada CORS
+                    const params = new URLSearchParams();
+                    params.append('action', 'login');
+                    params.append('username', authForm.username);
+                    params.append('password', authForm.password);
+
                     const response = await fetch(API_URL, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'text/plain' },
-                        body: JSON.stringify({ 
-                            action: 'login', 
-                            username: authForm.username, 
-                            password: authForm.password 
-                        })
+                        mode: 'cors', // Pastikan mode cors aktif
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: params.toString()
                     });
                     
                     const data = await response.json();
+                    
                     if (data && data.success) {
-                        setUser(data.user);
+                        setUser(data.user || { name: authForm.username, role: 'Admin' });
                         setView('dashboard');
                         fetchData();
                     } else {
-                        alert("Login gagal. Periksa kembali username dan password Anda.");
+                        alert(data.message || "Login gagal. Periksa kembali username dan password Anda.");
                     }
                 } catch (err) {
                     console.error("Login Error:", err);
-                    alert("Gagal terhubung ke server. Pastikan Apps Script sudah aktif.");
+                    alert("Gagal terhubung ke server. Pastikan Web App di Google Script sudah di-deploy dengan akses 'Anyone'.");
                 } finally {
                     setLoading(false);
                 }
@@ -80,7 +86,10 @@
                 try {
                     const res = await fetch(API_URL + "?action=getAllWarga");
                     const data = await res.json();
-                    if (data) setDataWarga(Array.isArray(data) ? data : (data.data || []));
+                    if (data) {
+                        const result = Array.isArray(data) ? data : (data.data || []);
+                        setDataWarga(result);
+                    }
                 } catch (err) {
                     console.error("Fetch Data Error:", err);
                 }
@@ -119,6 +128,7 @@
                                     <input 
                                         type="text" 
                                         required 
+                                        autoComplete="username"
                                         className="w-full mt-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" 
                                         onChange={e => setAuthForm({...authForm, username: e.target.value})} 
                                     />
@@ -128,6 +138,7 @@
                                     <input 
                                         type="password" 
                                         required 
+                                        autoComplete="current-password"
                                         className="w-full mt-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" 
                                         onChange={e => setAuthForm({...authForm, password: e.target.value})} 
                                     />
@@ -139,7 +150,7 @@
                                     {loading ? "Menghubungkan..." : "Masuk"}
                                 </button>
                                 <div className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100 text-[10px] text-blue-600 leading-relaxed text-center">
-                                    <p>Pastikan Google Apps Script di-deploy sebagai 'Web App' dengan akses 'Anyone'.</p>
+                                    <p>Pastikan script Google Apps sudah dipublikasikan sebagai 'Web App' dengan akses 'Anyone'.</p>
                                 </div>
                             </form>
                         </div>
