@@ -19,7 +19,7 @@
 </head>
 <body class="text-slate-800">
     <!-- Overlay Loading -->
-    <div id="loadingOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] hidden flex flex-col items-center justify-center text-white">
+    <div id="loadingOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] hidden flex flex-col items-center justify-center text-white text-center p-6">
         <div class="loader-spinner w-12 h-12 border-4 mb-4"></div>
         <p id="loadingText" class="font-bold tracking-widest text-sm uppercase">Mohon Tunggu...</p>
     </div>
@@ -94,43 +94,41 @@
         lucide.createIcons();
 
         /**
-         * Fungsi fetch diperbarui untuk meminimalkan error CORS/Failed to fetch
-         * Selalu menggunakan GET karena Google Script lebih stabil memproses GET di lingkungan sandbox
+         * Fungsi fetchAPI diperbarui menggunakan teknik JSONP
+         * JSONP melewati batasan CORS dengan memuat data via tag <script>
          */
-        async function fetchAPI(action, params = {}) {
-            try {
-                // Tambahkan action dan timestamp untuk menghindari cache browser
+        function fetchAPI(action, params = {}) {
+            return new Promise((resolve, reject) => {
+                const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+                
+                // Set timeout 30 detik
+                const timeoutId = setTimeout(() => {
+                    delete window[callbackName];
+                    resolve({ success: false, message: "Koneksi ke server terputus (Timeout)." });
+                }, 30000);
+
+                window[callbackName] = function(data) {
+                    clearTimeout(timeoutId);
+                    document.body.removeChild(script);
+                    delete window[callbackName];
+                    resolve(data);
+                };
+
                 const queryParams = new URLSearchParams({
                     action: action,
+                    callback: callbackName,
                     _t: new Date().getTime(),
                     ...params
                 });
-                
-                const finalUrl = `${API_URL}?${queryParams.toString()}`;
 
-                const response = await fetch(finalUrl, {
-                    method: 'GET',
-                    mode: 'cors',
-                    cache: 'no-store',
-                    redirect: 'follow'
-                });
-
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                
-                const text = await response.text();
-                try {
-                    return JSON.parse(text);
-                } catch (e) {
-                    console.warn("Respons gagal diparse ke JSON:", text);
-                    return { success: false, message: "Respons server tidak valid." };
-                }
-            } catch (error) {
-                console.error('Fetch error:', error);
-                return { 
-                    success: false, 
-                    message: "Gagal terhubung ke server (CORS/Network error). Pastikan Apps Script telah di-deploy dengan akses 'Anyone'." 
+                const script = document.createElement('script');
+                script.src = `${API_URL}?${queryParams.toString()}`;
+                script.onerror = () => {
+                    clearTimeout(timeoutId);
+                    resolve({ success: false, message: "Gagal memuat skrip API (CORS/Network Error)." });
                 };
-            }
+                document.body.appendChild(script);
+            });
         }
 
         function setLoading(show, text = "Mohon Tunggu...") {
@@ -211,7 +209,7 @@
                 </div>
                 <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
                     <h3 class="font-bold mb-4">Statistik Pertumbuhan</h3>
-                    <canvas id="myChart" height="100"></canvas>
+                    <div class="h-64"><canvas id="myChart"></canvas></div>
                 </div>
             `;
             
@@ -231,7 +229,7 @@
                             backgroundColor: 'rgba(67, 56, 202, 0.05)'
                         }]
                     },
-                    options: { responsive: true, plugins: { legend: { display: false } } }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
                 });
             }
         }
@@ -300,7 +298,7 @@
                             </div>
                             <div>
                                 <label class="text-[10px] font-bold uppercase text-slate-400">NIK (16 Digit)</label>
-                                <input name="NIK" required class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input name="NIK" required maxlength="16" class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
                             </div>
                             <div>
                                 <label class="text-[10px] font-bold uppercase text-slate-400">RT</label>
@@ -308,13 +306,6 @@
                                     <option value="1">RT 01</option>
                                     <option value="2">RT 02</option>
                                     <option value="3">RT 03</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold uppercase text-slate-400">Jenis Kelamin</label>
-                                <select name="Kelamin" class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl outline-none">
-                                    <option value="Laki-laki">Laki-laki</option>
-                                    <option value="Perempuan">Perempuan</option>
                                 </select>
                             </div>
                         </div>
@@ -329,7 +320,6 @@
                 const obj = Object.fromEntries(formData.entries());
                 
                 setLoading(true, "Menyimpan...");
-                // Kirim payload sebagai JSON string di dalam query param agar tetap kompatibel dengan GET
                 const res = await fetchAPI('addWarga', { payload: JSON.stringify(obj) });
                 
                 if (res && res.success) {
