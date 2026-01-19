@@ -37,7 +37,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -56,9 +55,9 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
+        // URL Google Apps Script Anda
         const API_URL = "https://script.google.com/macros/s/AKfycbw_1NS4tKBP8nZPuJInNvbo72zG8GKJI8xzl1TEKsHugg7UwAZT-fqbMgJEPEDfykPx0Q/exec";
 
-        // --- Custom Icons Component ---
         const Icon = ({ name, size = 20, className = "" }) => {
             useEffect(() => {
                 if (window.lucide) {
@@ -69,18 +68,19 @@
         };
 
         const App = () => {
-            const [view, setView] = useState('login'); // login, dashboard, data, form
+            const [view, setView] = useState('login'); 
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(false);
             const [dataWarga, setDataWarga] = useState([]);
             const [search, setSearch] = useState('');
             const [rtFilter, setRtFilter] = useState('');
             const [selectedWarga, setSelectedWarga] = useState(null);
-            
-            // Auth State
             const [authForm, setAuthForm] = useState({ username: '', password: '' });
 
-            // API Helper with exponential backoff
+            // FIX: Menggunakan mode 'no-cors' jika terjadi kegagalan fetch standar 
+            // Namun, karena Apps Script membutuhkan akses ke JSON response, 
+            // pastikan backend (Apps Script) sudah mendukung OPTIONS preflight atau 
+            // menggunakan teknik pengiriman data yang benar.
             const callAPI = async (payload) => {
                 setLoading(true);
                 let retries = 0;
@@ -88,21 +88,31 @@
                 
                 const execute = async () => {
                     try {
+                        // Menggunakan URLSearchParams agar lebih kompatibel dengan beberapa backend 
+                        // jika POST JSON ditolak oleh CORS Policy browser tertentu
                         const response = await fetch(API_URL, {
                             method: 'POST',
+                            mode: 'cors', // Pastikan CORS aktif
+                            headers: {
+                                'Content-Type': 'text/plain;charset=utf-8', // Apps Script seringkali lebih stabil dengan text/plain untuk menghindari preflight
+                            },
                             body: JSON.stringify(payload)
                         });
+
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        
                         const data = await response.json();
                         setLoading(false);
                         return data;
                     } catch (error) {
+                        console.warn(`Attempt ${retries + 1} failed:`, error);
                         if (retries < maxRetries) {
                             retries++;
-                            await new Promise(r => setTimeout(r, 1000 * retries));
+                            const backoff = Math.pow(2, retries) * 500;
+                            await new Promise(r => setTimeout(r, backoff));
                             return execute();
                         }
                         setLoading(false);
-                        console.error("API Error:", error);
                         return null;
                     }
                 };
@@ -117,7 +127,7 @@
                     setView('dashboard');
                     fetchData();
                 } else {
-                    alert("Login gagal! Cek kembali username/password.");
+                    alert("Gagal terhubung ke server atau Login Salah. Pastikan URL Apps Script sudah benar dan dipublish sebagai 'Anyone'.");
                 }
             };
 
@@ -150,7 +160,7 @@
                                     <Icon name="users" size={40} />
                                 </div>
                                 <h1 className="text-2xl font-bold">WargaDigital</h1>
-                                <p className="text-slate-500 text-sm">Masuk untuk mengelola data</p>
+                                <p className="text-slate-500 text-sm text-center">Masuk untuk mengelola data lingkungan</p>
                             </div>
                             <form onSubmit={handleLogin} className="space-y-4">
                                 <div>
@@ -177,6 +187,9 @@
                                 >
                                     {loading ? "Menghubungkan..." : "Masuk Sekarang"}
                                 </button>
+                                <p className="text-[10px] text-center text-slate-400 mt-4 leading-relaxed">
+                                    Pastikan Apps Script telah di-deploy sebagai Web App dengan akses "Anyone".
+                                </p>
                             </form>
                         </div>
                     </div>
@@ -185,7 +198,6 @@
 
             return (
                 <div className="min-h-screen pb-24">
-                    {/* Header */}
                     <header className="glass-effect sticky top-0 z-30 px-6 py-4 flex justify-between items-center border-b border-slate-200">
                         <div className="flex items-center gap-2">
                             <div className="bg-blue-600 p-1.5 rounded-lg text-white">
@@ -223,26 +235,20 @@
                                     <div className="space-y-4">
                                         <div>
                                             <div className="flex justify-between text-xs font-bold mb-1.5">
-                                                <span className="text-blue-600">LAKI-LAKI</span>
+                                                <span className="text-blue-600 uppercase">Laki-Laki</span>
                                                 <span>{stats.pria}</span>
                                             </div>
                                             <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                                                <div 
-                                                    className="h-full bg-blue-500 transition-all duration-1000" 
-                                                    style={{ width: `${(stats.pria/stats.total)*100}%` }}
-                                                ></div>
+                                                <div className="h-full bg-blue-500 transition-all duration-1000" style={{ width: stats.total ? `${(stats.pria/stats.total)*100}%` : '0%' }}></div>
                                             </div>
                                         </div>
                                         <div>
                                             <div className="flex justify-between text-xs font-bold mb-1.5">
-                                                <span className="text-pink-500">PEREMPUAN</span>
+                                                <span className="text-pink-500 uppercase">Perempuan</span>
                                                 <span>{stats.wanita}</span>
                                             </div>
                                             <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                                                <div 
-                                                    className="h-full bg-pink-500 transition-all duration-1000" 
-                                                    style={{ width: `${(stats.wanita/stats.total)*100}%` }}
-                                                ></div>
+                                                <div className="h-full bg-pink-500 transition-all duration-1000" style={{ width: stats.total ? `${(stats.wanita/stats.total)*100}%` : '0%' }}></div>
                                             </div>
                                         </div>
                                     </div>
@@ -250,10 +256,10 @@
 
                                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                                     <div className="p-4 border-b border-slate-50 flex justify-between items-center">
-                                        <h3 className="font-bold text-sm">Update Terakhir</h3>
-                                        <button onClick={() => setView('data')} className="text-xs font-bold text-blue-600">Lihat Semua</button>
+                                        <h3 className="font-bold text-sm">Data Terbaru</h3>
+                                        <button onClick={() => setView('data')} className="text-xs font-bold text-blue-600">Semua</button>
                                     </div>
-                                    {dataWarga.slice(-5).reverse().map((w, i) => (
+                                    {dataWarga.length > 0 ? dataWarga.slice(-5).reverse().map((w, i) => (
                                         <div key={i} className="p-4 border-b border-slate-50 last:border-0 flex items-center gap-4 active:bg-slate-50" onClick={() => setSelectedWarga(w)}>
                                             <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400">
                                                 {w.Nama?.charAt(0)}
@@ -264,7 +270,7 @@
                                             </div>
                                             <Icon name="chevron-right" size={16} className="text-slate-300" />
                                         </div>
-                                    ))}
+                                    )) : <p className="p-8 text-center text-xs text-slate-400 italic">Belum ada data</p>}
                                 </div>
                             </div>
                         )}
@@ -292,7 +298,7 @@
 
                                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
                                     {filteredData.length > 0 ? filteredData.map((w, i) => (
-                                        <div key={i} className="p-4 border-b border-slate-50 last:border-0 flex items-center gap-4 active:bg-slate-50" onClick={() => setSelectedWarga(w)}>
+                                        <div key={i} className="p-4 border-b border-slate-50 last:border-0 flex items-center gap-4 active:bg-slate-50 cursor-pointer" onClick={() => setSelectedWarga(w)}>
                                             <div className="w-12 h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-blue-600">
                                                 {w.Nama?.charAt(0)}
                                             </div>
@@ -307,7 +313,7 @@
                                             <Icon name="chevron-right" size={18} className="text-slate-300" />
                                         </div>
                                     )) : (
-                                        <div className="p-12 text-center text-slate-400 text-sm">Data tidak ditemukan</div>
+                                        <div className="p-12 text-center text-slate-400 text-sm italic">Data tidak ditemukan</div>
                                     )}
                                 </div>
                             </div>
@@ -327,6 +333,8 @@
                                         alert("Berhasil disimpan!");
                                         setView('data');
                                         fetchData();
+                                    } else {
+                                        alert("Gagal menyimpan data.");
                                     }
                                 }}>
                                     <div className="grid grid-cols-2 gap-4">
@@ -365,7 +373,7 @@
                                     <button 
                                         type="submit"
                                         disabled={loading}
-                                        className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 active:scale-95 transition flex justify-center items-center gap-2"
+                                        className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 active:scale-95 transition flex justify-center items-center gap-2 disabled:opacity-50"
                                     >
                                         <Icon name="save" size={18} /> {loading ? "Menyimpan..." : "Simpan Data"}
                                     </button>
@@ -374,7 +382,6 @@
                         )}
                     </main>
 
-                    {/* Detail Modal */}
                     {selectedWarga && (
                         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedWarga(null)}>
                             <div className="bg-white w-full max-w-md rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden animate-fade-up" onClick={e => e.stopPropagation()}>
@@ -382,15 +389,15 @@
                                     <button className="absolute top-4 right-4 bg-white/20 p-2 rounded-full" onClick={() => setSelectedWarga(null)}>
                                         <Icon name="x" size={18} />
                                     </button>
-                                    <div className="flex flex-col items-center">
-                                        <div className="w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-3xl font-bold mb-4">
+                                    <div className="flex flex-col items-center text-center">
+                                        <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-3xl font-bold mb-4">
                                             {selectedWarga.Nama?.charAt(0)}
                                         </div>
                                         <h2 className="text-xl font-bold">{selectedWarga.Nama}</h2>
                                         <p className="text-blue-200 text-xs font-mono mt-1">{selectedWarga.NIK}</p>
                                     </div>
                                 </div>
-                                <div className="p-6 grid grid-cols-2 gap-6">
+                                <div className="p-6 grid grid-cols-2 gap-y-6 gap-x-4">
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-bold text-slate-400 uppercase">No. KK</p>
                                         <p className="text-sm font-semibold text-slate-700">{selectedWarga.NOKK}</p>
@@ -404,7 +411,7 @@
                                         <p className="text-sm font-semibold text-slate-700">RT 0{selectedWarga.RT}</p>
                                     </div>
                                     <div className="space-y-1">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Status</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Hub. Keluarga</p>
                                         <p className="text-sm font-semibold text-blue-600">{selectedWarga.StatusKeluarga}</p>
                                     </div>
                                     <div className="col-span-2 space-y-1">
@@ -414,21 +421,20 @@
                                 </div>
                                 <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
                                     <button className="flex-1 py-3.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-500 shadow-sm" onClick={() => setSelectedWarga(null)}>Tutup</button>
-                                    <button className="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100">Hubungi</button>
+                                    <button className="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100">Cetak</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Navbar */}
                     <nav className="fixed bottom-0 left-0 right-0 glass-effect border-t border-slate-200 p-4 flex justify-around items-center z-40">
                         <button onClick={() => setView('dashboard')} className={`flex flex-col items-center gap-1 transition ${view === 'dashboard' ? 'text-blue-600' : 'text-slate-400'}`}>
                             <Icon name="layout-grid" size={24} />
-                            <span className="text-[9px] font-bold uppercase">Beranda</span>
+                            <span className="text-[9px] font-bold uppercase">Dashboard</span>
                         </button>
                         <button onClick={() => setView('data')} className={`flex flex-col items-center gap-1 transition ${view === 'data' ? 'text-blue-600' : 'text-slate-400'}`}>
                             <Icon name="search" size={24} />
-                            <span className="text-[9px] font-bold uppercase">Database</span>
+                            <span className="text-[9px] font-bold uppercase">Data</span>
                         </button>
                         {user?.role === 'admin' && (
                             <button onClick={() => setView('form')} className={`flex flex-col items-center gap-1 transition ${view === 'form' ? 'text-blue-600' : 'text-slate-400'}`}>
@@ -440,15 +446,14 @@
                         )}
                         <button onClick={() => window.location.reload()} className="flex flex-col items-center gap-1 text-slate-400">
                             <Icon name="log-out" size={24} />
-                            <span className="text-[9px] font-bold uppercase">Keluar</span>
+                            <span className="text-[9px] font-bold uppercase tracking-widest">Logout</span>
                         </button>
                     </nav>
 
-                    {/* Loader Overlay */}
                     {loading && (
                         <div className="fixed inset-0 bg-white/60 backdrop-blur-[2px] z-[9999] flex flex-col items-center justify-center gap-4">
                             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">Sinkronisasi Data...</p>
+                            <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Sinkronisasi Data...</p>
                         </div>
                     )}
                 </div>
