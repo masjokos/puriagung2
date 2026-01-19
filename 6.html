@@ -3,292 +3,362 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WargaDigital - Sistem Informasi Warga</title>
+    <title>Puri Agung 2 - Manajemen Warga</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .glass-effect { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-        .animate-fade-up { animation: fadeUp 0.4s ease-out; }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        .login-bg { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); position: relative; overflow: hidden; }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .sidebar-item.active { background-color: #e0e7ff; color: #4338ca; border-right: 4px solid #4338ca; }
+        .loader-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #4338ca; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900">
-    <div id="root"></div>
+<body class="text-slate-800">
+    <!-- Overlay Loading -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] hidden flex flex-col items-center justify-center text-white">
+        <div class="loader-spinner w-12 h-12 border-4 mb-4"></div>
+        <p id="loadingText" class="font-bold tracking-widest text-sm uppercase">Mohon Tunggu...</p>
+    </div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+    <!-- Login Page -->
+    <div id="loginPage" class="min-h-screen flex items-center justify-center login-bg p-6">
+        <div class="glass-card p-8 rounded-[2rem] shadow-2xl w-full max-w-md">
+            <div class="text-center mb-8">
+                <div class="bg-indigo-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg">
+                    <i data-lucide="shield-check" size="32"></i>
+                </div>
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight">Puri Agung 2</h1>
+                <p class="text-slate-500 text-sm">Sistem Informasi Manajemen Warga</p>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400 ml-1">Username</label>
+                    <input type="text" id="username" required class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="Masukkan username">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400 ml-1">Password</label>
+                    <input type="password" id="password" required class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="••••••••">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-xl shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all">
+                    Masuk Sekarang
+                </button>
+            </form>
+        </div>
+    </div>
 
-        // URL Web App dari Google Apps Script sesuai permintaan user
+    <!-- Main Dashboard -->
+    <div id="mainContent" class="hidden min-h-screen flex">
+        <aside class="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col">
+            <div class="p-6 border-b border-slate-100 flex items-center gap-3">
+                <div class="bg-indigo-600 p-2 rounded-lg text-white"><i data-lucide="home"></i></div>
+                <span class="font-bold text-lg tracking-tight">PuriAgung2</span>
+            </div>
+            <nav class="flex-1 py-4">
+                <button onclick="showPage('dashboard')" class="sidebar-item w-full px-6 py-4 flex items-center gap-4 text-slate-500 hover:bg-slate-50 transition-all font-medium">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </button>
+                <button onclick="showPage('dataWarga')" class="sidebar-item w-full px-6 py-4 flex items-center gap-4 text-slate-500 hover:bg-slate-50 transition-all font-medium">
+                    <i data-lucide="users"></i> Data Warga
+                </button>
+                <button onclick="showPage('tambahWarga')" class="sidebar-item w-full px-6 py-4 flex items-center gap-4 text-slate-500 hover:bg-slate-50 transition-all font-medium">
+                    <i data-lucide="user-plus"></i> Tambah Warga
+                </button>
+            </nav>
+            <div class="p-6 border-t border-slate-100">
+                <button onclick="logout()" class="flex items-center gap-3 text-red-500 font-bold text-sm hover:translate-x-1 transition-all">
+                    <i data-lucide="log-out"></i> Keluar Sistem
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col min-w-0">
+            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6">
+                <h2 id="pageTitle" class="font-bold text-slate-800">Dashboard</h2>
+                <div class="flex items-center gap-4">
+                    <span id="userBadge" class="text-xs font-bold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">Admin</span>
+                </div>
+            </header>
+            <div id="pageContainer" class="p-6 overflow-y-auto flex-1"></div>
+        </main>
+    </div>
+
+    <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbw_1NS4tKBP8nZPuJInNvbo72zG8GKJI8xzl1TEKsHugg7UwAZT-fqbMgJEPEDfykPx0Q/exec";
+        let currentUser = null;
+        let wargaData = [];
 
-        const Icon = ({ name, size = 20, className = "" }) => {
-            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
-            return <i data-lucide={name} className={`${className}`} style={{ width: size, height: size }}></i>;
-        };
+        lucide.createIcons();
 
-        const App = () => {
-            // State utama aplikasi
-            const [view, setView] = useState('login'); 
-            const [user, setUser] = useState(null);
-            const [loading, setLoading] = useState(false);
-            const [dataWarga, setDataWarga] = useState([]);
-            const [search, setSearch] = useState('');
-            const [rtFilter, setRtFilter] = useState('');
-            const [selectedWarga, setSelectedWarga] = useState(null);
-            const [authForm, setAuthForm] = useState({ username: '', password: '' });
-
-            // Fungsi login yang diperbarui untuk mengatasi masalah CORS/Redirect Google Script
-            const handleLogin = async (e) => {
-                e.preventDefault();
-                setLoading(true);
+        /**
+         * Fungsi fetch diperbarui untuk meminimalkan error CORS/Failed to fetch
+         * Selalu menggunakan GET karena Google Script lebih stabil memproses GET di lingkungan sandbox
+         */
+        async function fetchAPI(action, params = {}) {
+            try {
+                // Tambahkan action dan timestamp untuk menghindari cache browser
+                const queryParams = new URLSearchParams({
+                    action: action,
+                    _t: new Date().getTime(),
+                    ...params
+                });
                 
+                const finalUrl = `${API_URL}?${queryParams.toString()}`;
+
+                const response = await fetch(finalUrl, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-store',
+                    redirect: 'follow'
+                });
+
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                const text = await response.text();
                 try {
-                    // Menggunakan URLSearchParams agar Google Script menerima data sebagai form parameters
-                    // Ini cara paling aman untuk menghindari error preflight OPTIONS pada CORS
-                    const params = new URLSearchParams();
-                    params.append('action', 'login');
-                    params.append('username', authForm.username);
-                    params.append('password', authForm.password);
-
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        mode: 'cors', // Pastikan mode cors aktif
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: params.toString()
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data && data.success) {
-                        setUser(data.user || { name: authForm.username, role: 'Admin' });
-                        setView('dashboard');
-                        fetchData();
-                    } else {
-                        alert(data.message || "Login gagal. Periksa kembali username dan password Anda.");
-                    }
-                } catch (err) {
-                    console.error("Login Error:", err);
-                    alert("Gagal terhubung ke server. Pastikan Web App di Google Script sudah di-deploy dengan akses 'Anyone'.");
-                } finally {
-                    setLoading(false);
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.warn("Respons gagal diparse ke JSON:", text);
+                    return { success: false, message: "Respons server tidak valid." };
                 }
-            };
+            } catch (error) {
+                console.error('Fetch error:', error);
+                return { 
+                    success: false, 
+                    message: "Gagal terhubung ke server (CORS/Network error). Pastikan Apps Script telah di-deploy dengan akses 'Anyone'." 
+                };
+            }
+        }
 
-            const fetchData = async () => {
-                try {
-                    const res = await fetch(API_URL + "?action=getAllWarga");
-                    const data = await res.json();
-                    if (data) {
-                        const result = Array.isArray(data) ? data : (data.data || []);
-                        setDataWarga(result);
-                    }
-                } catch (err) {
-                    console.error("Fetch Data Error:", err);
+        function setLoading(show, text = "Mohon Tunggu...") {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                document.getElementById('loadingText').innerText = text;
+                overlay.classList.toggle('hidden', !show);
+            }
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            
+            setLoading(true, "Memverifikasi...");
+            const res = await fetchAPI('login', { username: user, password: pass });
+            
+            if (res && res.success) {
+                currentUser = res.user;
+                document.getElementById('loginPage').classList.add('hidden');
+                document.getElementById('mainContent').classList.remove('hidden');
+                await syncData();
+                showPage('dashboard');
+            } else {
+                alert(res.message || "Username atau Password salah!");
+            }
+            setLoading(false);
+        });
+
+        async function syncData() {
+            setLoading(true, "Sinkronisasi Data...");
+            const res = await fetchAPI('getAllWarga');
+            if (res) {
+                wargaData = Array.isArray(res) ? res : (res.data || []);
+            }
+            setLoading(false);
+        }
+
+        function showPage(pageId) {
+            const container = document.getElementById('pageContainer');
+            document.getElementById('pageTitle').innerText = pageId.toUpperCase();
+            
+            document.querySelectorAll('.sidebar-item').forEach(btn => {
+                const btnText = btn.innerText.toLowerCase();
+                if(btnText.includes(pageId.toLowerCase().replace('data', ''))) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
                 }
-            };
-
-            const stats = useMemo(() => {
-                const total = dataWarga.length;
-                const pria = dataWarga.filter(w => w.Kelamin === 'Laki-Laki' || w.Kelamin === 'L').length;
-                const wanita = dataWarga.filter(w => w.Kelamin === 'Perempuan' || w.Kelamin === 'P').length;
-                const kk = dataWarga.filter(w => w.StatusKeluarga === 'Kepala Keluarga').length;
-                return { total, pria, wanita, kk };
-            }, [dataWarga]);
-
-            const filteredData = dataWarga.filter(w => {
-                const term = search.toLowerCase();
-                const matchSearch = (w.Nama?.toLowerCase().includes(term) || w.NIK?.toString().includes(term));
-                const matchRT = rtFilter === "" || w.RT?.toString() === rtFilter;
-                return matchSearch && matchRT;
             });
 
-            // RENDER HALAMAN LOGIN
-            if (view === 'login') {
-                return (
-                    <div className="min-h-screen flex items-center justify-center p-6 bg-slate-900">
-                        <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm animate-fade-up">
-                            <div className="flex flex-col items-center mb-8">
-                                <div className="bg-blue-600 p-4 rounded-2xl text-white mb-4 shadow-lg">
-                                    <Icon name="users" size={40} />
-                                </div>
-                                <h1 className="text-2xl font-bold text-slate-800">WargaDigital</h1>
-                                <p className="text-slate-500 text-sm">Sistem Informasi Lingkungan</p>
-                            </div>
-                            <form onSubmit={handleLogin} className="space-y-4">
-                                <div>
-                                    <label className="text-xs font-bold uppercase text-slate-400 ml-1">Nama Pengguna</label>
-                                    <input 
-                                        type="text" 
-                                        required 
-                                        autoComplete="username"
-                                        className="w-full mt-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" 
-                                        onChange={e => setAuthForm({...authForm, username: e.target.value})} 
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold uppercase text-slate-400 ml-1">Kata Sandi</label>
-                                    <input 
-                                        type="password" 
-                                        required 
-                                        autoComplete="current-password"
-                                        className="w-full mt-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" 
-                                        onChange={e => setAuthForm({...authForm, password: e.target.value})} 
-                                    />
-                                </div>
-                                <button 
-                                    disabled={loading} 
-                                    className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition disabled:opacity-50"
-                                >
-                                    {loading ? "Menghubungkan..." : "Masuk"}
-                                </button>
-                                <div className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100 text-[10px] text-blue-600 leading-relaxed text-center">
-                                    <p>Pastikan script Google Apps sudah dipublikasikan sebagai 'Web App' dengan akses 'Anyone'.</p>
-                                </div>
-                            </form>
-                        </div>
+            if (pageId === 'dashboard') renderDashboard();
+            else if (pageId === 'dataWarga') renderDataWarga();
+            else if (pageId === 'tambahWarga') renderTambahWarga();
+        }
+
+        function renderDashboard() {
+            const container = document.getElementById('pageContainer');
+            const totalWarga = wargaData.length;
+            const pria = wargaData.filter(w => String(w.Kelamin || '').toLowerCase().startsWith('l')).length;
+            const wanita = totalWarga - pria;
+
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Warga</p>
+                        <h3 class="text-3xl font-black text-slate-800 mt-1">${totalWarga}</h3>
                     </div>
-                );
-            }
-
-            // RENDER HALAMAN DASHBOARD / DATA
-            return (
-                <div className="min-h-screen pb-24">
-                    <header className="glass-effect sticky top-0 z-30 px-6 py-4 flex justify-between items-center border-b border-slate-200">
-                        <div className="flex items-center gap-2">
-                            <div className="bg-blue-600 p-1.5 rounded-lg text-white"><Icon name="users" size={20} /></div>
-                            <span className="font-bold text-lg text-blue-600">WargaApps</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-bold uppercase">{user?.role || 'User'}</span>
-                            <button onClick={() => setView('login')} className="p-2 text-slate-400"><Icon name="log-out" size={18} /></button>
-                        </div>
-                    </header>
-
-                    <main className="max-w-xl mx-auto p-6 animate-fade-up">
-                        {view === 'dashboard' && (
-                            <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 text-center">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Total Warga</p>
-                                        <h2 className="text-3xl font-extrabold text-slate-800 mt-1">{stats.total}</h2>
-                                    </div>
-                                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 text-center">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Kepala Keluarga</p>
-                                        <h2 className="text-3xl font-extrabold text-blue-600 mt-1">{stats.kk}</h2>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                                    <h3 className="font-bold text-sm mb-6">Distribusi Jenis Kelamin</h3>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <div className="flex justify-between text-xs font-bold mb-1.5"><span>Laki-Laki</span><span>{stats.pria}</span></div>
-                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                                <div className="h-full bg-blue-500" style={{ width: stats.total ? `${(stats.pria/stats.total)*100}%` : '0%' }}></div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="flex justify-between text-xs font-bold mb-1.5"><span>Perempuan</span><span>{stats.wanita}</span></div>
-                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                                <div className="h-full bg-pink-500" style={{ width: stats.total ? `${(stats.wanita/stats.total)*100}%` : '0%' }}></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h3 className="font-bold text-sm">Data Terbaru</h3>
-                                        <button onClick={() => setView('data')} className="text-xs font-bold text-blue-600">Lihat Semua</button>
-                                    </div>
-                                    <div className="space-y-3">
-                                        {dataWarga.length > 0 ? dataWarga.slice(-3).reverse().map((w, i) => (
-                                            <div key={i} className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
-                                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center font-bold text-blue-600 border border-slate-100">{w.Nama?.[0]}</div>
-                                                <div className="flex-1">
-                                                    <p className="text-sm font-bold text-slate-800">{w.Nama}</p>
-                                                    <p className="text-[10px] text-slate-400 uppercase font-bold">RT {w.RT}</p>
-                                                </div>
-                                            </div>
-                                        )) : <p className="text-center py-4 text-xs text-slate-400">Belum ada data</p>}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {view === 'data' && (
-                            <div className="space-y-4">
-                                <div className="flex gap-2">
-                                    <input type="text" placeholder="Cari NIK atau Nama..." className="flex-1 p-3 bg-white border border-slate-200 rounded-xl outline-none text-sm" onChange={e => setSearch(e.target.value)} />
-                                    <select className="bg-white border border-slate-200 rounded-xl px-2 text-xs font-bold outline-none" onChange={e => setRtFilter(e.target.value)}>
-                                        <option value="">Semua RT</option>
-                                        {[1,2,3,4,5].map(v => <option key={v} value={v}>RT 0{v}</option>)}
-                                    </select>
-                                </div>
-                                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 divide-y divide-slate-50">
-                                    {filteredData.length > 0 ? filteredData.map((w, i) => (
-                                        <div key={i} className="p-4 flex items-center gap-4 active:bg-slate-50 cursor-pointer" onClick={() => setSelectedWarga(w)}>
-                                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center font-bold text-blue-600 text-sm">{w.Nama?.[0]}</div>
-                                            <div className="flex-1 text-sm">
-                                                <p className="font-bold text-slate-800">{w.Nama}</p>
-                                                <p className="text-[10px] text-slate-400">{w.NIK} • RT 0{w.RT}</p>
-                                            </div>
-                                            <Icon name="chevron-right" size={16} className="text-slate-300" />
-                                        </div>
-                                    )) : <div className="p-8 text-center text-slate-400 text-sm italic">Data tidak ditemukan</div>}
-                                </div>
-                            </div>
-                        )}
-                    </main>
-
-                    {selectedWarga && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedWarga(null)}>
-                            <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-fade-up" onClick={e => e.stopPropagation()}>
-                                <div className="bg-blue-600 p-6 text-white text-center">
-                                    <div className="w-16 h-16 bg-white/20 rounded-2xl mx-auto mb-3 flex items-center justify-center text-2xl font-bold">{selectedWarga.Nama?.[0]}</div>
-                                    <h2 className="font-bold">{selectedWarga.Nama}</h2>
-                                    <p className="text-xs text-blue-200">{selectedWarga.NIK}</p>
-                                </div>
-                                <div className="p-6 space-y-4 text-sm">
-                                    <div className="flex justify-between border-b pb-2"><span className="text-slate-400">No. KK</span><span className="font-bold">{selectedWarga.NOKK}</span></div>
-                                    <div className="flex justify-between border-b pb-2"><span className="text-slate-400">Gender</span><span className="font-bold">{selectedWarga.Kelamin}</span></div>
-                                    <div className="flex justify-between border-b pb-2"><span className="text-slate-400">Wilayah</span><span className="font-bold">RT 0{selectedWarga.RT}</span></div>
-                                    <div className="flex justify-between border-b pb-2"><span className="text-slate-400">Status</span><span className="font-bold text-blue-600">{selectedWarga.StatusKeluarga}</span></div>
-                                </div>
-                                <button className="w-full py-4 bg-slate-50 font-bold text-slate-400 border-t" onClick={() => setSelectedWarga(null)}>Tutup</button>
-                            </div>
-                        </div>
-                    )}
-
-                    <nav className="fixed bottom-0 left-0 right-0 glass-effect border-t border-slate-200 px-8 py-4 flex justify-between items-center z-40">
-                        <button onClick={() => setView('dashboard')} className={`flex flex-col items-center gap-1 ${view === 'dashboard' ? 'text-blue-600' : 'text-slate-400'}`}>
-                            <Icon name="home" size={24} /><span className="text-[9px] font-bold uppercase tracking-widest">Beranda</span>
-                        </button>
-                        <button onClick={() => setView('data')} className={`flex flex-col items-center gap-1 ${view === 'data' ? 'text-blue-600' : 'text-slate-400'}`}>
-                            <Icon name="database" size={24} /><span className="text-[9px] font-bold uppercase tracking-widest">Database</span>
-                        </button>
-                    </nav>
-
-                    {loading && (
-                        <div className="fixed inset-0 bg-white/60 backdrop-blur-[2px] z-[9999] flex flex-col items-center justify-center gap-4">
-                            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-[10px] font-bold text-blue-600 tracking-widest uppercase">Sinkronisasi...</p>
-                        </div>
-                    )}
+                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-blue-400">Laki-Laki</p>
+                        <h3 class="text-3xl font-black text-blue-600 mt-1">${pria}</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-pink-400">Perempuan</p>
+                        <h3 class="text-3xl font-black text-pink-600 mt-1">${wanita}</h3>
+                    </div>
                 </div>
-            );
-        };
+                <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
+                    <h3 class="font-bold mb-4">Statistik Pertumbuhan</h3>
+                    <canvas id="myChart" height="100"></canvas>
+                </div>
+            `;
+            
+            const canvas = document.getElementById('myChart');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                        datasets: [{
+                            label: 'Warga Baru',
+                            data: [12, 19, 3, 5, 2, 3],
+                            borderColor: '#4338ca',
+                            tension: 0.4,
+                            fill: true,
+                            backgroundColor: 'rgba(67, 56, 202, 0.05)'
+                        }]
+                    },
+                    options: { responsive: true, plugins: { legend: { display: false } } }
+                });
+            }
+        }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        function renderDataWarga() {
+            const container = document.getElementById('pageContainer');
+            container.innerHTML = `
+                <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold">Daftar Seluruh Warga</h3>
+                        <input type="text" oninput="filterWarga(this.value)" placeholder="Cari warga..." class="bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-400 uppercase text-[10px] font-bold tracking-widest">
+                                <tr>
+                                    <th class="px-6 py-4">Nama Lengkap</th>
+                                    <th class="px-6 py-4">NIK</th>
+                                    <th class="px-6 py-4">RT</th>
+                                    <th class="px-6 py-4 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wargaTableBody" class="divide-y divide-slate-50">
+                                ${renderTableRows(wargaData)}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function renderTableRows(data) {
+            if (!data || data.length === 0) return '<tr><td colspan="4" class="p-10 text-center text-slate-400 italic">Tidak ada data ditemukan</td></tr>';
+            return data.map(w => `
+                <tr class="hover:bg-slate-50/50 transition-colors">
+                    <td class="px-6 py-4 font-bold text-slate-700">${w.Nama || '-'}</td>
+                    <td class="px-6 py-4 text-slate-500">${w.NIK || '-'}</td>
+                    <td class="px-6 py-4">RT 0${w.RT || '0'}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="deleteWarga('${w.NIK}')" class="text-red-400 hover:text-red-600 p-2"><i data-lucide="trash-2"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterWarga(val) {
+            const filtered = wargaData.filter(w => 
+                (w.Nama || '').toLowerCase().includes(val.toLowerCase()) || 
+                (w.NIK || '').toString().includes(val)
+            );
+            document.getElementById('wargaTableBody').innerHTML = renderTableRows(filtered);
+            lucide.createIcons();
+        }
+
+        function renderTambahWarga() {
+            const container = document.getElementById('pageContainer');
+            container.innerHTML = `
+                <div class="max-w-2xl mx-auto bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
+                    <h3 class="font-bold mb-6">Formulir Warga Baru</h3>
+                    <form id="addWargaForm" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="col-span-2">
+                                <label class="text-[10px] font-bold uppercase text-slate-400">Nama Lengkap</label>
+                                <input name="Nama" required class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold uppercase text-slate-400">NIK (16 Digit)</label>
+                                <input name="NIK" required class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold uppercase text-slate-400">RT</label>
+                                <select name="RT" class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl outline-none">
+                                    <option value="1">RT 01</option>
+                                    <option value="2">RT 02</option>
+                                    <option value="3">RT 03</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold uppercase text-slate-400">Jenis Kelamin</label>
+                                <select name="Kelamin" class="w-full p-4 mt-1 bg-slate-50 border border-slate-200 rounded-2xl outline-none">
+                                    <option value="Laki-laki">Laki-laki</option>
+                                    <option value="Perempuan">Perempuan</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold mt-6 shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">Simpan Data</button>
+                    </form>
+                </div>
+            `;
+
+            document.getElementById('addWargaForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const obj = Object.fromEntries(formData.entries());
+                
+                setLoading(true, "Menyimpan...");
+                // Kirim payload sebagai JSON string di dalam query param agar tetap kompatibel dengan GET
+                const res = await fetchAPI('addWarga', { payload: JSON.stringify(obj) });
+                
+                if (res && res.success) {
+                    alert("Data berhasil disimpan!");
+                    await syncData();
+                    showPage('dataWarga');
+                } else {
+                    alert(res.message || "Gagal menyimpan data.");
+                }
+                setLoading(false);
+            });
+        }
+
+        async function deleteWarga(nik) {
+            if(!confirm("Anda yakin ingin menghapus data warga ini?")) return;
+            setLoading(true, "Menghapus...");
+            const res = await fetchAPI('deleteWarga', { nik: nik });
+            if(res && res.success) {
+                await syncData();
+                renderDataWarga();
+            } else {
+                alert(res.message || "Gagal menghapus data.");
+            }
+            setLoading(false);
+        }
+
+        function logout() {
+            if(confirm("Keluar dari sistem?")) location.reload();
+        }
     </script>
 </body>
 </html>
