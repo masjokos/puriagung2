@@ -1,538 +1,462 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Users, LayoutDashboard, PlusCircle, LogOut, 
-  Search, Filter, ChevronLeft, ChevronRight, Save, Camera, User
-} from 'lucide-react';
-
-const API_URL = "https://script.google.com/macros/s/AKfycbw_1NS4tKBP8nZPuJInNvbo72zG8GKJI8xzl1TEKsHugg7UwAZT-fqbMgJEPEDfykPx0Q/exec";
-
-// Custom SVG Icon for Family to replace missing FamilyRestroom
-const FamilyIcon = ({ size = 18 }) => (
-  <svg 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round"
-  >
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-  </svg>
-);
-
-export default function App() {
-  const [view, setView] = useState('login');
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [dataWarga, setDataWarga] = useState([]);
-  const [search, setSearch] = useState('');
-  const [rtFilter, setRtFilter] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedWarga, setSelectedWarga] = useState(null);
-  const [isEdit, setIsEdit] = useState(false);
-  
-  // Login State
-  const [auth, setAuth] = useState({ username: '', password: '' });
-
-  const rowsPerPage = 20;
-
-  // Generic API Caller with exponential backoff logic (internal)
-  const callAPI = async (payload) => {
-    setLoading(true);
-    let retryCount = 0;
-    const maxRetries = 5;
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WargaDigital - Sistem Informasi Warga</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    const execute = async () => {
-      try {
-        const response = await fetch(API_URL, {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        });
-        const data = await response.json();
-        setLoading(false);
-        return data;
-      } catch (error) {
-        if (retryCount < maxRetries) {
-          retryCount++;
-          const delay = Math.pow(2, retryCount) * 500; // Exponential backoff
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return execute();
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
-        setLoading(false);
-        alert("Gagal terhubung ke server setelah beberapa percobaan. Silakan coba lagi.");
-        return null;
-      }
-    };
 
-    return execute();
-  };
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    const res = await callAPI({ action: 'login', ...auth });
-    if (res && res.success) {
-      setUser(res.user);
-      setView('dashboard');
-      fetchData();
-    } else {
-      alert("Login Gagal! Periksa kembali username dan password.");
-    }
-  };
+        .animate-fade-up {
+            animation: fadeUp 0.4s ease-out;
+        }
 
-  const fetchData = async () => {
-    const data = await callAPI({ action: 'getAllWarga' });
-    if (data) setDataWarga(data);
-  };
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-  // Filter & Pagination Logic
-  const filteredData = dataWarga.filter(w => {
-    const nama = w.Nama || "";
-    const nik = w.NIK || "";
-    const matchSearch = nama.toLowerCase().includes(search.toLowerCase()) || nik.toString().includes(search);
-    const matchRT = rtFilter === "" || (w.RT && w.RT.toString() === rtFilter);
-    return matchSearch && matchRT;
-  });
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
 
-  const paginatedData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
 
-  const stats = {
-    total: dataWarga.length,
-    pria: dataWarga.filter(w => w.Kelamin === 'Laki-Laki').length,
-    wanita: dataWarga.filter(w => w.Kelamin === 'Perempuan').length,
-    kk: dataWarga.filter(w => w.StatusKeluarga === 'Kepala Keluarga').length
-  };
+        const API_URL = "https://script.google.com/macros/s/AKfycbw_1NS4tKBP8nZPuJInNvbo72zG8GKJI8xzl1TEKsHugg7UwAZT-fqbMgJEPEDfykPx0Q/exec";
 
-  if (view === 'login') {
-    return (
-      <div className="min-h-screen bg-blue-600 flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-          <div className="flex justify-center mb-4">
-            <div className="bg-blue-100 p-3 rounded-full text-blue-600">
-               <Users size={32} />
-            </div>
-          </div>
-          <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">WargaDigital Login</h1>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-              <input 
-                type="text" 
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
-                onChange={(e) => setAuth({...auth, username: e.target.value})}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input 
-                type="password" 
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
-                onChange={(e) => setAuth({...auth, password: e.target.value})}
-                required
-              />
-            </div>
-            <button 
-              disabled={loading}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:bg-blue-300 flex justify-center items-center gap-2"
-            >
-              {loading ? "Memproses..." : "Masuk"}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Loading Overlay */}
-      {loading && (
-        <div className="fixed inset-0 bg-black/20 z-[9999] flex items-center justify-center">
-          <div className="bg-white p-4 rounded-xl shadow-lg flex flex-col items-center gap-3">
-             <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-600 border-t-transparent"></div>
-             <span className="text-sm font-medium text-gray-600">Memproses Data...</span>
-          </div>
-        </div>
-      )}
-
-      {/* Header */}
-      <header className="bg-white shadow-sm p-4 sticky top-0 z-10 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-           <div className="bg-blue-600 p-1.5 rounded-lg text-white">
-              <Users size={20} />
-           </div>
-           <span className="text-xl font-bold text-blue-600">WargaApps</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full uppercase font-bold">{user?.role}</span>
-        </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto p-4">
-        {view === 'dashboard' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500">
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Total Warga</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
-              <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Kepala Keluarga</p>
-                <p className="text-2xl font-bold">{stats.kk}</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-xl shadow-sm">
-              <h3 className="font-bold mb-6 flex items-center gap-2"><LayoutDashboard size={18} className="text-blue-600"/> Statistik Gender</h3>
-              <div className="flex gap-8 items-end h-32 px-4">
-                 <div className="flex-1 flex flex-col items-center gap-2">
-                    <div className="w-full bg-blue-100 rounded-t-lg relative transition-all duration-500" style={{height: stats.total ? `${(stats.pria/stats.total)*100}%` : '0%'}}>
-                      <div className="absolute inset-0 bg-blue-500 rounded-t-lg opacity-80"></div>
-                      <span className="absolute -top-6 w-full text-center text-xs font-bold text-blue-700">{stats.pria}</span>
-                    </div>
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">Laki-laki</span>
-                 </div>
-                 <div className="flex-1 flex flex-col items-center gap-2">
-                    <div className="w-full bg-pink-100 rounded-t-lg relative transition-all duration-500" style={{height: stats.total ? `${(stats.wanita/stats.total)*100}%` : '0%'}}>
-                      <div className="absolute inset-0 bg-pink-500 rounded-t-lg opacity-80"></div>
-                      <span className="absolute -top-6 w-full text-center text-xs font-bold text-pink-700">{stats.wanita}</span>
-                    </div>
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">Perempuan</span>
-                 </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-               <div className="p-4 border-b flex justify-between items-center">
-                  <h3 className="font-bold">5 Data Terbaru</h3>
-                  <button onClick={() => setView('data')} className="text-xs text-blue-600 font-bold">Lihat Semua</button>
-               </div>
-               {dataWarga.length > 0 ? (
-                 dataWarga.slice(-5).reverse().map((w, i) => (
-                   <div key={i} className="p-4 border-t first:border-t-0 flex justify-between items-center hover:bg-gray-50 transition" onClick={() => setSelectedWarga(w)}>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
-                           <User size={16} />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{w.Nama}</p>
-                          <p className="text-[10px] text-gray-500 uppercase">RT {w.RT} • {w.StatusTinggal}</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-600 font-mono">{w.NIK}</span>
-                   </div>
-                 ))
-               ) : (
-                 <div className="p-8 text-center text-gray-400 text-sm italic">Belum ada data warga.</div>
-               )}
-            </div>
-          </div>
-        )}
-
-        {view === 'data' && (
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 text-gray-400" size={18}/>
-                <input 
-                  type="text" 
-                  placeholder="Cari Nama/NIK..." 
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-              <select 
-                className="border border-gray-300 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-sm bg-white"
-                onChange={(e) => {
-                  setRtFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-              >
-                <option value="">Semua RT</option>
-                <option value="1">RT 1</option>
-                <option value="2">RT 2</option>
-                <option value="3">RT 3</option>
-                <option value="4">RT 4</option>
-              </select>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-              {paginatedData.length > 0 ? (
-                paginatedData.map((w, i) => (
-                  <div key={i} className="p-4 border-b last:border-0 active:bg-gray-50 cursor-pointer flex items-center gap-4 transition" onClick={() => setSelectedWarga(w)}>
-                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold uppercase border border-blue-100">
-                      {w.Nama ? w.Nama.charAt(0) : '?'}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-bold text-gray-800 text-sm">{w.Nama}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] text-gray-500 font-mono">{w.NIK}</span>
-                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                        <span className="text-[10px] text-blue-600 font-bold uppercase">RT {w.RT}</span>
-                      </div>
-                      <p className="text-[10px] text-gray-400 mt-1 line-clamp-1 italic">{w.AlamatTinggal || "Alamat tidak tersedia"}</p>
-                    </div>
-                    <ChevronRight size={16} className="text-gray-300" />
-                  </div>
-                ))
-              ) : (
-                <div className="p-12 text-center text-gray-400">Data tidak ditemukan</div>
-              )}
-            </div>
-
-            {filteredData.length > rowsPerPage && (
-              <div className="flex justify-between items-center p-2">
-                <button 
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev-1))} 
-                  className="p-2 bg-white rounded-lg shadow-sm border border-gray-200 disabled:opacity-30" 
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft size={20}/>
-                </button>
-                <span className="text-xs font-bold text-gray-500">Hal {currentPage} dari {Math.ceil(filteredData.length/rowsPerPage)}</span>
-                <button 
-                  onClick={() => setCurrentPage(prev => prev+1)} 
-                  className="p-2 bg-white rounded-lg shadow-sm border border-gray-200 disabled:opacity-30" 
-                  disabled={currentPage >= Math.ceil(filteredData.length/rowsPerPage)}
-                >
-                  <ChevronRight size={20}/>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {view === 'form' && (
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><PlusCircle className="text-blue-600"/> Tambah Data Warga</h2>
-            <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={async (e) => {
-              e.preventDefault();
-              const fd = new FormData(e.target);
-              const payload = Object.fromEntries(fd.entries());
-              
-              const fileInput = document.getElementById('foto_upload');
-              if(fileInput && fileInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = async (re) => {
-                  payload.base64Foto = re.target.result;
-                  const res = await callAPI({ action: 'saveWarga', data: payload });
-                  if(res && res.success) {
-                    alert("Data Berhasil Disimpan");
-                    setView('data');
-                    fetchData();
-                  }
-                };
-                reader.readAsDataURL(fileInput.files[0]);
-              } else {
-                const res = await callAPI({ action: 'saveWarga', data: payload });
-                if(res && res.success) {
-                  alert("Data Berhasil Disimpan");
-                  setView('data');
-                  fetchData();
+        // --- Custom Icons Component ---
+        const Icon = ({ name, size = 20, className = "" }) => {
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
                 }
-              }
-            }}>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">NIK</label>
-                <input type="text" name="NIK" placeholder="Masukkan NIK" required className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"/>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">No KK</label>
-                <input type="text" name="NOKK" placeholder="Masukkan No Kartu Keluarga" required className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"/>
-              </div>
-              <div className="space-y-1 col-span-full">
-                <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Nama Lengkap</label>
-                <input type="text" name="Nama" placeholder="Nama Lengkap Sesuai KTP" required className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"/>
-              </div>
-              
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Jenis Kelamin</label>
-                <select name="Kelamin" className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                  <option value="Laki-Laki">Laki-Laki</option>
-                  <option value="Perempuan">Perempuan</option>
-                </select>
-              </div>
-              
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Agama</label>
-                <select name="Agama" className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                  <option>Islam</option><option>Kristen</option><option>Katolik</option><option>Buddha</option><option>Hindu</option><option>Konghucu</option>
-                </select>
-              </div>
+            }, [name]);
+            return <i data-lucide={name} className={`${className}`} style={{ width: size, height: size }}></i>;
+        };
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Tempat Lahir</label>
-                <input type="text" name="TempatLahir" placeholder="Kota Lahir" className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"/>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Tanggal Lahir</label>
-                <input type="date" name="TglLahir" className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"/>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Status Kawin</label>
-                <select name="StatusKawin" className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                  <option>Belum kawin</option><option>Kawin</option><option>Cerai Hidup</option><option>Cerai Mati</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">RT</label>
-                <select name="RT" className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                  <option value="1">RT 01</option><option value="2">RT 02</option><option value="3">RT 03</option><option value="4">RT 04</option>
-                </select>
-              </div>
-
-              <div className="space-y-1 col-span-full">
-                <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Alamat Lengkap</label>
-                <input type="text" name="AlamatTinggal" placeholder="Contoh: Blok A No. 12" className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"/>
-              </div>
-              
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Status Keluarga</label>
-                <select name="StatusKeluarga" className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                  <option>Kepala Keluarga</option><option>Istri</option><option>Anak</option><option>Orang Tua</option><option>Lainnya</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">No HP / WA</label>
-                <input type="text" name="NoHP" placeholder="08..." className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"/>
-              </div>
-              
-              <div className="col-span-full border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center gap-3 bg-gray-50 hover:bg-gray-100 transition cursor-pointer relative">
-                <Camera className="text-gray-400" size={32}/>
-                <span className="text-xs font-bold text-gray-400 uppercase">Pilih atau Ambil Foto Warga</span>
-                <input type="file" id="foto_upload" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer"/>
-              </div>
-
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="col-span-full bg-blue-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 transition active:scale-[0.98]"
-              >
-                <Save size={20}/> {loading ? "Menyimpan..." : "Simpan Data Warga"}
-              </button>
-            </form>
-          </div>
-        )}
-      </main>
-
-      {/* Detail Modal */}
-      {selectedWarga && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setSelectedWarga(null)}>
-          <div className="bg-white w-full max-w-lg rounded-t-3xl md:rounded-2xl p-0 overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300" onClick={e => e.stopPropagation()}>
-            {/* Modal Header/Profile */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-8 text-white relative">
-              <button className="absolute top-4 right-4 bg-white/20 p-2 rounded-full hover:bg-white/30 transition" onClick={() => setSelectedWarga(null)}>✕</button>
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center text-blue-600 text-3xl font-bold shadow-lg border-4 border-blue-400">
-                  {selectedWarga.Foto ? (
-                    <img src={selectedWarga.Foto} className="w-full h-full rounded-full object-cover" alt="Foto Profil" />
-                  ) : selectedWarga.Nama.charAt(0)}
-                </div>
-                <div className="text-center">
-                  <h2 className="text-xl font-bold">{selectedWarga.Nama}</h2>
-                  <p className="text-blue-100 text-sm font-mono tracking-wider">{selectedWarga.NIK}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
-              <div className="grid grid-cols-2 gap-y-5 gap-x-4 text-sm">
-                <div className="space-y-0.5">
-                   <p className="text-[10px] font-bold text-gray-400 uppercase">No Kartu Keluarga</p>
-                   <p className="font-semibold text-gray-700">{selectedWarga.NOKK}</p>
-                </div>
-                <div className="space-y-0.5">
-                   <p className="text-[10px] font-bold text-gray-400 uppercase">Jenis Kelamin</p>
-                   <p className="font-semibold text-gray-700">{selectedWarga.Kelamin}</p>
-                </div>
-                <div className="space-y-0.5">
-                   <p className="text-[10px] font-bold text-gray-400 uppercase">Agama</p>
-                   <p className="font-semibold text-gray-700">{selectedWarga.Agama}</p>
-                </div>
-                <div className="space-y-0.5">
-                   <p className="text-[10px] font-bold text-gray-400 uppercase">Kelahiran</p>
-                   <p className="font-semibold text-gray-700 text-xs">{selectedWarga.TempatLahir || "-"}, {selectedWarga.TglLahir || "-"}</p>
-                </div>
-                <div className="space-y-0.5 col-span-full">
-                   <p className="text-[10px] font-bold text-gray-400 uppercase">Alamat Tinggal</p>
-                   <p className="font-semibold text-gray-700">{selectedWarga.AlamatTinggal} <span className="text-blue-600">RT {selectedWarga.RT}</span></p>
-                </div>
-                <div className="space-y-0.5">
-                   <p className="text-[10px] font-bold text-gray-400 uppercase">Status Keluarga</p>
-                   <p className="font-semibold text-gray-700">{selectedWarga.StatusKeluarga}</p>
-                </div>
-                <div className="space-y-0.5">
-                   <p className="text-[10px] font-bold text-gray-400 uppercase">No HP / WA</p>
-                   <p className="font-bold text-blue-600 underline decoration-blue-200">{selectedWarga.NoHP || "-"}</p>
-                </div>
-              </div>
-
-              {selectedWarga.StatusKeluarga === 'Kepala Keluarga' && (
-                <div className="mt-8 border-t border-gray-100 pt-6">
-                   <h4 className="font-bold text-gray-800 flex items-center gap-2 mb-4"><FamilyIcon size={18} /> Anggota Keluarga Lainnya</h4>
-                   <div className="space-y-2">
-                     {dataWarga.filter(w => w.NOKK === selectedWarga.NOKK && w.NIK !== selectedWarga.NIK).length > 0 ? (
-                       dataWarga.filter(w => w.NOKK === selectedWarga.NOKK && w.NIK !== selectedWarga.NIK).map((ang, i) => (
-                         <div key={i} className="flex justify-between items-center bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
-                           <span className="text-sm font-medium text-gray-700">{ang.Nama}</span>
-                           <span className="text-[10px] bg-white px-2 py-1 rounded-full border border-gray-200 font-bold text-gray-500 uppercase">{ang.StatusKeluarga}</span>
-                         </div>
-                       ))
-                     ) : (
-                       <p className="text-xs text-gray-400 italic">Tidak ada anggota keluarga terdaftar dengan No KK ini.</p>
-                     )}
-                   </div>
-                </div>
-              )}
-            </div>
+        const App = () => {
+            const [view, setView] = useState('login'); // login, dashboard, data, form
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [dataWarga, setDataWarga] = useState([]);
+            const [search, setSearch] = useState('');
+            const [rtFilter, setRtFilter] = useState('');
+            const [selectedWarga, setSelectedWarga] = useState(null);
             
-            <div className="p-6 bg-gray-50 flex gap-3">
-              <button className="flex-1 py-3.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold shadow-sm active:scale-95 transition" onClick={() => setSelectedWarga(null)}>Tutup</button>
-              {user?.role !== 'viewer' && (
-                <button 
-                  className="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100 active:scale-95 transition"
-                  onClick={() => {
-                    // Logic edit bisa ditambahkan di sini
-                    alert("Fitur Edit Data dalam pengembangan");
-                  }}
-                >
-                  Edit Data
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+            // Auth State
+            const [authForm, setAuthForm] = useState({ username: '', password: '' });
 
-      {/* Bottom Navigation Menu */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-around p-3 md:p-4 z-40 shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
-        <button onClick={() => { setView('dashboard'); setPage(1); }} className={`flex flex-col items-center gap-1.5 transition-colors ${view === 'dashboard' ? 'text-blue-600' : 'text-gray-400'}`}>
-          <LayoutDashboard size={22}/>
-          <span className="text-[9px] font-bold uppercase tracking-tight">Beranda</span>
-        </button>
-        <button onClick={() => { setView('data'); setPage(1); }} className={`flex flex-col items-center gap-1.5 transition-colors ${view === 'data' ? 'text-blue-600' : 'text-gray-400'}`}>
-          <Users size={22}/>
-          <span className="text-[9px] font-bold uppercase tracking-tight">Data Warga</span>
-        </button>
-        {user?.role !== 'viewer' && (
-          <button onClick={() => setView('form')} className={`flex flex-col items-center gap-1.5 transition-colors ${view === 'form' ? 'text-blue-600' : 'text-gray-400'}`}>
-            <PlusCircle size={22}/>
-            <span className="text-[9px] font-bold uppercase tracking-tight">Tambah</span>
-          </button>
-        )}
-        <button onClick={() => { if(confirm("Yakin ingin keluar?")) window.location.reload(); }} className="flex flex-col items-center gap-1.5 text-gray-400 hover:text-red-500 transition-colors">
-          <LogOut size={22}/>
-          <span className="text-[9px] font-bold uppercase tracking-tight">Keluar</span>
-        </button>
-      </nav>
-    </div>
-  );
-}
+            // API Helper with exponential backoff
+            const callAPI = async (payload) => {
+                setLoading(true);
+                let retries = 0;
+                const maxRetries = 3;
+                
+                const execute = async () => {
+                    try {
+                        const response = await fetch(API_URL, {
+                            method: 'POST',
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await response.json();
+                        setLoading(false);
+                        return data;
+                    } catch (error) {
+                        if (retries < maxRetries) {
+                            retries++;
+                            await new Promise(r => setTimeout(r, 1000 * retries));
+                            return execute();
+                        }
+                        setLoading(false);
+                        console.error("API Error:", error);
+                        return null;
+                    }
+                };
+                return execute();
+            };
+
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                const res = await callAPI({ action: 'login', ...authForm });
+                if (res && res.success) {
+                    setUser(res.user);
+                    setView('dashboard');
+                    fetchData();
+                } else {
+                    alert("Login gagal! Cek kembali username/password.");
+                }
+            };
+
+            const fetchData = async () => {
+                const res = await callAPI({ action: 'getAllWarga' });
+                if (res) setDataWarga(res);
+            };
+
+            const stats = useMemo(() => {
+                const total = dataWarga.length;
+                const pria = dataWarga.filter(w => w.Kelamin === 'Laki-Laki').length;
+                const wanita = dataWarga.filter(w => w.Kelamin === 'Perempuan').length;
+                const kk = dataWarga.filter(w => w.StatusKeluarga === 'Kepala Keluarga').length;
+                return { total, pria, wanita, kk };
+            }, [dataWarga]);
+
+            const filteredData = dataWarga.filter(w => {
+                const term = search.toLowerCase();
+                const matchSearch = (w.Nama?.toLowerCase().includes(term) || w.NIK?.toString().includes(term));
+                const matchRT = rtFilter === "" || w.RT?.toString() === rtFilter;
+                return matchSearch && matchRT;
+            });
+
+            if (view === 'login') {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-6 bg-blue-600">
+                        <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm animate-fade-up">
+                            <div className="flex flex-col items-center mb-8">
+                                <div className="bg-blue-100 p-4 rounded-2xl text-blue-600 mb-4">
+                                    <Icon name="users" size={40} />
+                                </div>
+                                <h1 className="text-2xl font-bold">WargaDigital</h1>
+                                <p className="text-slate-500 text-sm">Masuk untuk mengelola data</p>
+                            </div>
+                            <form onSubmit={handleLogin} className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-slate-400 ml-1">Username</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        className="w-full mt-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                                        onChange={e => setAuthForm({...authForm, username: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-slate-400 ml-1">Password</label>
+                                    <input 
+                                        type="password" 
+                                        required
+                                        className="w-full mt-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                                        onChange={e => setAuthForm({...authForm, password: e.target.value})}
+                                    />
+                                </div>
+                                <button 
+                                    disabled={loading}
+                                    className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition disabled:opacity-50"
+                                >
+                                    {loading ? "Menghubungkan..." : "Masuk Sekarang"}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen pb-24">
+                    {/* Header */}
+                    <header className="glass-effect sticky top-0 z-30 px-6 py-4 flex justify-between items-center border-b border-slate-200">
+                        <div className="flex items-center gap-2">
+                            <div className="bg-blue-600 p-1.5 rounded-lg text-white">
+                                <Icon name="users" size={20} />
+                            </div>
+                            <span className="font-bold text-lg text-blue-600">WargaApps</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="text-[10px] bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">{user?.role}</span>
+                            <div className="w-8 h-8 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center">
+                                <Icon name="user" size={16} className="text-slate-500" />
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-xl mx-auto p-6 animate-fade-up">
+                        {view === 'dashboard' && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Total Warga</p>
+                                        <h2 className="text-3xl font-extrabold text-slate-800 mt-1">{stats.total}</h2>
+                                    </div>
+                                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Kepala Keluarga</p>
+                                        <h2 className="text-3xl font-extrabold text-green-600 mt-1">{stats.kk}</h2>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                                    <h3 className="font-bold flex items-center gap-2 mb-6">
+                                        <Icon name="bar-chart-3" size={18} className="text-blue-600" />
+                                        Distribusi Gender
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <div className="flex justify-between text-xs font-bold mb-1.5">
+                                                <span className="text-blue-600">LAKI-LAKI</span>
+                                                <span>{stats.pria}</span>
+                                            </div>
+                                            <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-blue-500 transition-all duration-1000" 
+                                                    style={{ width: `${(stats.pria/stats.total)*100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="flex justify-between text-xs font-bold mb-1.5">
+                                                <span className="text-pink-500">PEREMPUAN</span>
+                                                <span>{stats.wanita}</span>
+                                            </div>
+                                            <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-pink-500 transition-all duration-1000" 
+                                                    style={{ width: `${(stats.wanita/stats.total)*100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                                    <div className="p-4 border-b border-slate-50 flex justify-between items-center">
+                                        <h3 className="font-bold text-sm">Update Terakhir</h3>
+                                        <button onClick={() => setView('data')} className="text-xs font-bold text-blue-600">Lihat Semua</button>
+                                    </div>
+                                    {dataWarga.slice(-5).reverse().map((w, i) => (
+                                        <div key={i} className="p-4 border-b border-slate-50 last:border-0 flex items-center gap-4 active:bg-slate-50" onClick={() => setSelectedWarga(w)}>
+                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400">
+                                                {w.Nama?.charAt(0)}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-bold text-slate-800">{w.Nama}</p>
+                                                <p className="text-[10px] text-slate-400 uppercase font-bold">RT {w.RT} • {w.StatusKeluarga}</p>
+                                            </div>
+                                            <Icon name="chevron-right" size={16} className="text-slate-300" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'data' && (
+                            <div className="space-y-4">
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <Icon name="search" size={18} className="absolute left-3 top-3 text-slate-400" />
+                                        <input 
+                                            type="text" 
+                                            placeholder="Cari Nama atau NIK..."
+                                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm"
+                                            onChange={e => setSearch(e.target.value)}
+                                        />
+                                    </div>
+                                    <select 
+                                        className="bg-white border border-slate-200 rounded-xl px-3 text-xs font-bold outline-none shadow-sm"
+                                        onChange={e => setRtFilter(e.target.value)}
+                                    >
+                                        <option value="">SEMUA RT</option>
+                                        {[1,2,3,4,5].map(v => <option key={v} value={v}>RT 0{v}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
+                                    {filteredData.length > 0 ? filteredData.map((w, i) => (
+                                        <div key={i} className="p-4 border-b border-slate-50 last:border-0 flex items-center gap-4 active:bg-slate-50" onClick={() => setSelectedWarga(w)}>
+                                            <div className="w-12 h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-blue-600">
+                                                {w.Nama?.charAt(0)}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="font-bold text-slate-800">{w.Nama}</p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-[10px] font-mono text-slate-400">{w.NIK}</span>
+                                                    <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
+                                                    <span className="text-[10px] font-bold text-blue-500 uppercase">RT 0{w.RT}</span>
+                                                </div>
+                                            </div>
+                                            <Icon name="chevron-right" size={18} className="text-slate-300" />
+                                        </div>
+                                    )) : (
+                                        <div className="p-12 text-center text-slate-400 text-sm">Data tidak ditemukan</div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'form' && (
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                                    <Icon name="plus-circle" className="text-blue-600" /> Tambah Warga
+                                </h2>
+                                <form className="space-y-4" onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    const fd = new FormData(e.target);
+                                    const data = Object.fromEntries(fd.entries());
+                                    const res = await callAPI({ action: 'saveWarga', data });
+                                    if(res?.success) {
+                                        alert("Berhasil disimpan!");
+                                        setView('data');
+                                        fetchData();
+                                    }
+                                }}>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">NIK</label>
+                                            <input name="NIK" required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm"/>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">No. KK</label>
+                                            <input name="NOKK" required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm"/>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Nama Lengkap</label>
+                                        <input name="Nama" required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm"/>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Jenis Kelamin</label>
+                                            <select name="Kelamin" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white">
+                                                <option>Laki-Laki</option>
+                                                <option>Perempuan</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">RT</label>
+                                            <select name="RT" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white">
+                                                {[1,2,3,4,5].map(v => <option key={v} value={v}>RT 0{v}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Alamat</label>
+                                        <textarea name="AlamatTinggal" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm h-20"></textarea>
+                                    </div>
+                                    <button 
+                                        type="submit"
+                                        disabled={loading}
+                                        className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 active:scale-95 transition flex justify-center items-center gap-2"
+                                    >
+                                        <Icon name="save" size={18} /> {loading ? "Menyimpan..." : "Simpan Data"}
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Detail Modal */}
+                    {selectedWarga && (
+                        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedWarga(null)}>
+                            <div className="bg-white w-full max-w-md rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden animate-fade-up" onClick={e => e.stopPropagation()}>
+                                <div className="bg-blue-600 p-8 text-white relative">
+                                    <button className="absolute top-4 right-4 bg-white/20 p-2 rounded-full" onClick={() => setSelectedWarga(null)}>
+                                        <Icon name="x" size={18} />
+                                    </button>
+                                    <div className="flex flex-col items-center">
+                                        <div className="w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-3xl font-bold mb-4">
+                                            {selectedWarga.Nama?.charAt(0)}
+                                        </div>
+                                        <h2 className="text-xl font-bold">{selectedWarga.Nama}</h2>
+                                        <p className="text-blue-200 text-xs font-mono mt-1">{selectedWarga.NIK}</p>
+                                    </div>
+                                </div>
+                                <div className="p-6 grid grid-cols-2 gap-6">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">No. KK</p>
+                                        <p className="text-sm font-semibold text-slate-700">{selectedWarga.NOKK}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Gender</p>
+                                        <p className="text-sm font-semibold text-slate-700">{selectedWarga.Kelamin}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Wilayah</p>
+                                        <p className="text-sm font-semibold text-slate-700">RT 0{selectedWarga.RT}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Status</p>
+                                        <p className="text-sm font-semibold text-blue-600">{selectedWarga.StatusKeluarga}</p>
+                                    </div>
+                                    <div className="col-span-2 space-y-1">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Alamat Lengkap</p>
+                                        <p className="text-sm font-semibold text-slate-700 leading-relaxed">{selectedWarga.AlamatTinggal || "-"}</p>
+                                    </div>
+                                </div>
+                                <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
+                                    <button className="flex-1 py-3.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-500 shadow-sm" onClick={() => setSelectedWarga(null)}>Tutup</button>
+                                    <button className="flex-1 py-3.5 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100">Hubungi</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Navbar */}
+                    <nav className="fixed bottom-0 left-0 right-0 glass-effect border-t border-slate-200 p-4 flex justify-around items-center z-40">
+                        <button onClick={() => setView('dashboard')} className={`flex flex-col items-center gap-1 transition ${view === 'dashboard' ? 'text-blue-600' : 'text-slate-400'}`}>
+                            <Icon name="layout-grid" size={24} />
+                            <span className="text-[9px] font-bold uppercase">Beranda</span>
+                        </button>
+                        <button onClick={() => setView('data')} className={`flex flex-col items-center gap-1 transition ${view === 'data' ? 'text-blue-600' : 'text-slate-400'}`}>
+                            <Icon name="search" size={24} />
+                            <span className="text-[9px] font-bold uppercase">Database</span>
+                        </button>
+                        {user?.role === 'admin' && (
+                            <button onClick={() => setView('form')} className={`flex flex-col items-center gap-1 transition ${view === 'form' ? 'text-blue-600' : 'text-slate-400'}`}>
+                                <div className="bg-blue-600 text-white p-2 rounded-xl -mt-8 shadow-lg shadow-blue-200 ring-4 ring-white">
+                                    <Icon name="plus" size={24} />
+                                </div>
+                                <span className="text-[9px] font-bold uppercase mt-1">Tambah</span>
+                            </button>
+                        )}
+                        <button onClick={() => window.location.reload()} className="flex flex-col items-center gap-1 text-slate-400">
+                            <Icon name="log-out" size={24} />
+                            <span className="text-[9px] font-bold uppercase">Keluar</span>
+                        </button>
+                    </nav>
+
+                    {/* Loader Overlay */}
+                    {loading && (
+                        <div className="fixed inset-0 bg-white/60 backdrop-blur-[2px] z-[9999] flex flex-col items-center justify-center gap-4">
+                            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">Sinkronisasi Data...</p>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
