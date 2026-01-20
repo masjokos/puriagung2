@@ -10,7 +10,7 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-    .page { display: none; padding-bottom: 100px; }
+    .page { display: none; padding-bottom: 120px; }
     .page.active { display: block; animation: fadeIn 0.3s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
@@ -20,6 +20,10 @@
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #f1f1f1; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    
+    /* Bottom Navigation Styles */
+    .nav-item.active { color: #2563eb; }
+    .nav-item.active .material-icons { transform: translateY(-4px); transition: transform 0.2s ease; }
   </style>
 </head>
 <body class="bg-slate-50">
@@ -48,23 +52,30 @@
 
   <!-- MAIN APP -->
   <div id="main-app" class="hidden min-h-screen">
-    <header class="bg-white border-b sticky top-0 z-40 px-4 py-4 flex justify-between items-center shadow-sm">
+    <!-- Header tetap di atas untuk Desktop & Mobile -->
+    <header class="bg-white border-b sticky top-0 z-40 px-6 py-4 flex justify-between items-center shadow-sm">
       <div class="flex items-center gap-2">
         <span class="material-icons text-blue-600">analytics</span>
-        <h1 class="font-bold text-slate-800 tracking-tight">E-WARGA SYSTEM</h1>
+        <h1 class="font-bold text-slate-800 tracking-tight">E-WARGA</h1>
       </div>
-      <nav class="flex gap-1">
-        <button onclick="navigate('dashboard')" class="p-2 rounded-xl hover:bg-slate-100 text-slate-600 flex flex-col items-center"><span class="material-icons text-xl">dashboard</span></button>
-        <button onclick="navigate('datawarga')" class="p-2 rounded-xl hover:bg-slate-100 text-slate-600 flex flex-col items-center"><span class="material-icons text-xl">people</span></button>
-        <button onclick="navigate('kk')" class="p-2 rounded-xl hover:bg-slate-100 text-slate-600 flex flex-col items-center"><span class="material-icons text-xl">groups</span></button>
-        <button onclick="logout()" class="p-2 rounded-xl text-red-500 hover:bg-red-50 flex flex-col items-center"><span class="material-icons text-xl">logout</span></button>
+      <!-- Desktop Navigation -->
+      <nav class="hidden md:flex gap-4">
+        <button onclick="navigate('dashboard')" class="nav-btn-d font-bold text-slate-600 hover:text-blue-600 px-3 py-1">Dashboard</button>
+        <button onclick="navigate('datawarga')" class="nav-btn-d font-bold text-slate-600 hover:text-blue-600 px-3 py-1">Warga</button>
+        <button onclick="navigate('kk')" class="nav-btn-d font-bold text-slate-600 hover:text-blue-600 px-3 py-1">Keluarga</button>
+        <button onclick="logout()" class="text-red-500 font-bold px-3 py-1">Logout</button>
       </nav>
+      <div class="md:hidden">
+        <button onclick="logout()" class="text-red-500"><span class="material-icons">logout</span></button>
+      </div>
     </header>
 
     <main class="max-w-7xl mx-auto p-4 md:p-8">
       <!-- DASHBOARD -->
       <section id="page-dashboard" class="page active">
         <h2 class="text-2xl font-black mb-6">Ringkasan Data</h2>
+        
+        <!-- Stats Grid -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
             <p class="text-slate-400 text-[10px] font-black uppercase mb-1">Total Warga</p>
@@ -88,19 +99,30 @@
           <div class="bg-white p-6 rounded-3xl border border-slate-100 h-80"><canvas id="chartGender"></canvas></div>
           <div class="bg-white p-6 rounded-3xl border border-slate-100 lg:col-span-2 h-80"><canvas id="chartRT"></canvas></div>
         </div>
+
+        <!-- 5 Warga Terbaru -->
+        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="font-black text-slate-800 uppercase tracking-wider text-sm">5 Warga Terbaru</h3>
+            <button onclick="navigate('datawarga')" class="text-blue-600 text-xs font-bold">Lihat Semua</button>
+          </div>
+          <div id="recent-warga-list" class="space-y-4">
+             <!-- Konten diisi via JS -->
+          </div>
+        </div>
       </section>
 
       <!-- DATA WARGA -->
       <section id="page-datawarga" class="page">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-black">Data Warga</h2>
-          <button onclick="openForm()" class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2">
+          <button onclick="alert('Fitur tambah segera hadir')" class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2">
             <span class="material-icons">person_add</span> Tambah
           </button>
         </div>
         <div class="mb-6 relative">
           <span class="material-icons absolute left-5 top-4 text-slate-400">search</span>
-          <input type="text" id="search-input" oninput="filterData()" placeholder="Cari Nama atau NIK..." class="w-full pl-14 pr-6 py-4 bg-white rounded-2xl shadow-sm outline-none">
+          <input type="text" id="search-input" oninput="filterData()" placeholder="Cari Nama atau NIK..." class="w-full pl-14 pr-6 py-4 bg-white rounded-2xl shadow-sm outline-none border border-transparent focus:border-blue-500 transition-all">
         </div>
         <div id="warga-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
       </section>
@@ -111,6 +133,22 @@
         <div id="kk-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
       </section>
     </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-6 py-3 flex justify-between items-center z-50 rounded-t-[2rem] shadow-[0_-10px_25px_rgba(0,0,0,0.05)]">
+      <button onclick="navigate('dashboard')" id="nav-dashboard" class="nav-item active flex flex-col items-center gap-1 text-slate-400 transition-all">
+        <span class="material-icons text-2xl">dashboard</span>
+        <span class="text-[10px] font-bold">Home</span>
+      </button>
+      <button onclick="navigate('datawarga')" id="nav-datawarga" class="nav-item flex flex-col items-center gap-1 text-slate-400 transition-all">
+        <span class="material-icons text-2xl">people</span>
+        <span class="text-[10px] font-bold">Warga</span>
+      </button>
+      <button onclick="navigate('kk')" id="nav-kk" class="nav-item flex flex-col items-center gap-1 text-slate-400 transition-all">
+        <span class="material-icons text-2xl">groups</span>
+        <span class="text-[10px] font-bold">Keluarga</span>
+      </button>
+    </nav>
   </div>
 
   <!-- DETAIL MODAL -->
@@ -139,7 +177,6 @@
     let genderChart, rtChart;
     let IS_DEMO_MODE = false;
 
-    // Helper: Pastikan data tidak undefined/null
     const safeStr = (val) => (val === undefined || val === null ? '-' : String(val).trim());
 
     async function runBackend(functionName, args = []) {
@@ -156,7 +193,11 @@
 
     function getDemoData(action) {
       if (action === 'getAllWarga') return [
-        { NIK: "320101", NO_KK: "320101", Nama: "Demo User", Kelamin: "Laki-Laki", Agama: "Islam", Tempat_Lahir: "Jakarta", Tanggal_Lahir: "1990-01-01", Status_Perkawinan: "Kawin", Status_Tinggal: "Tetap", Blok: "A", Nomer: "01", RT: "1", Alamat_KTP: "Jakarta", Status_Keluarga: "Kepala Keluarga", NO_HP: "0812", Pekerjaan: "Swasta", Foto: "" }
+        ["320101", "320101", "Asep Sunandar", "Laki-Laki", "Islam", "Bandung", "1985-05-10", "Kawin", "Tetap", "A", "01", "1", "Jl. Melati", "Jl. Melati", "Kepala Keluarga", "08123", "PNS", ""],
+        ["320102", "320101", "Siti Aminah", "Perempuan", "Islam", "Bandung", "1988-08-15", "Kawin", "Tetap", "A", "01", "1", "Jl. Melati", "Jl. Melati", "Istri", "08124", "IRT", ""],
+        ["320103", "320202", "Budi Doremi", "Laki-Laki", "Islam", "Jakarta", "1990-01-01", "Belum Kawin", "Kontrak", "B", "12", "2", "Jl. Mawar", "Jl. Mawar", "Kepala Keluarga", "08125", "Swasta", ""],
+        ["320104", "320303", "Citra Kirana", "Perempuan", "Islam", "Bogor", "1995-12-12", "Kawin", "Tetap", "C", "05", "3", "Jl. Anggrek", "Jl. Anggrek", "Kepala Keluarga", "08126", "Wiraswasta", ""],
+        ["320105", "320101", "Dedi Kusnandar", "Laki-Laki", "Islam", "Bandung", "2010-02-20", "Belum Kawin", "Tetap", "A", "01", "1", "Jl. Melati", "Jl. Melati", "Anak", "08127", "Pelajar", ""]
       ];
       return { success: true };
     }
@@ -183,9 +224,7 @@
       showLoading(true, "MENGAMBIL DATA...");
       try {
         const res = await runBackend('getAllWarga');
-        // Pastikan mapping sesuai urutan kolom A-R
         ALL_DATA = (Array.isArray(res) ? res : (res.data || [])).map(item => {
-          // Jika item berupa Array (biasanya dari Spreadsheet getValues)
           if(Array.isArray(item)) {
             return {
               NIK: safeStr(item[0]), NO_KK: safeStr(item[1]), Nama: safeStr(item[2]),
@@ -197,7 +236,6 @@
               Foto: safeStr(item[17])
             };
           }
-          // Jika item sudah berupa Object (pastikan key-nya tepat)
           return {
             NIK: safeStr(item.NIK), NO_KK: safeStr(item.NO_KK), Nama: safeStr(item.Nama),
             Kelamin: safeStr(item.Kelamin), Agama: safeStr(item.Agama), Tempat_Lahir: safeStr(item.Tempat_Lahir),
@@ -210,13 +248,13 @@
         updateDashboard();
         renderWarga();
         renderKK();
+        renderRecentWarga();
       } catch (e) { console.error(e); }
       showLoading(false);
     }
 
     function updateDashboard() {
       const kepalaKeluarga = ALL_DATA.filter(w => w.Status_Keluarga.toLowerCase() === 'kepala keluarga');
-      
       const stats = { 
         total: ALL_DATA.length, 
         kk: kepalaKeluarga.length,
@@ -235,6 +273,26 @@
       document.getElementById('stat-wanita').innerText = stats.gender['Perempuan'];
 
       drawCharts(stats);
+    }
+
+    function renderRecentWarga() {
+      // Ambil 5 data terakhir dari array (asumsi data baru di bawah)
+      const recent = [...ALL_DATA].reverse().slice(0, 5);
+      const container = document.getElementById('recent-warga-list');
+      container.innerHTML = recent.map(w => `
+        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors cursor-pointer" onclick="openDetail('${w.NIK}')">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 border border-slate-100">
+              <span class="material-icons text-sm">person</span>
+            </div>
+            <div>
+              <p class="text-xs font-black text-slate-800">${w.Nama}</p>
+              <p class="text-[9px] text-slate-400 font-bold uppercase">RT 0${w.RT} • ${w.Status_Keluarga}</p>
+            </div>
+          </div>
+          <span class="material-icons text-slate-300 text-sm">chevron_right</span>
+        </div>
+      `).join('');
     }
 
     function renderWarga(filter = null) {
@@ -288,7 +346,6 @@
       const w = ALL_DATA.find(x => x.NIK === String(nik));
       if (!w) return;
       const content = document.getElementById('detail-content');
-      
       content.innerHTML = `
         <div class="flex items-center gap-6 mb-8">
           <div class="w-24 h-24 bg-slate-100 rounded-[2rem] overflow-hidden">
@@ -304,7 +361,7 @@
           <div><p class="text-[9px] font-black text-slate-300 uppercase">Nomor KK</p><p class="text-sm font-bold text-slate-700 font-mono">${w.NO_KK}</p></div>
           <div><p class="text-[9px] font-black text-slate-300 uppercase">Kelamin</p><p class="text-sm font-bold text-slate-700">${w.Kelamin}</p></div>
           <div><p class="text-[9px] font-black text-slate-300 uppercase">Agama</p><p class="text-sm font-bold text-slate-700">${w.Agama}</p></div>
-          <div><p class="text-[9px] font-black text-slate-300 uppercase">Tempat, Tgl Lahir</p><p class="text-sm font-bold text-slate-700">${w.Tempat_Lahir}, ${w.Tanggal_Lahir}</p></div>
+          <div><p class="text-[9px] font-black text-slate-300 uppercase">Tgl Lahir</p><p class="text-sm font-bold text-slate-700">${w.Tempat_Lahir}, ${w.Tanggal_Lahir}</p></div>
           <div><p class="text-[9px] font-black text-slate-300 uppercase">Pekerjaan</p><p class="text-sm font-bold text-slate-700">${w.Pekerjaan}</p></div>
           <div><p class="text-[9px] font-black text-slate-300 uppercase">No HP</p><p class="text-sm font-bold text-slate-700">${w.NO_HP}</p></div>
           <div><p class="text-[9px] font-black text-slate-300 uppercase">Domisili</p><p class="text-sm font-bold text-slate-700">Blok ${w.Blok}/${w.Nomer} RT 0${w.RT}</p></div>
@@ -319,7 +376,7 @@
       genderChart = new Chart(document.getElementById('chartGender'), {
         type: 'doughnut',
         data: { labels: ['Pria', 'Wanita'], datasets: [{ data: [stats.gender['Laki-Laki'], stats.gender['Perempuan']], backgroundColor: ['#3b82f6', '#ec4899'] }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Gender' } } }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Gender' }, legend: { position: 'bottom' } } }
       });
       if(rtChart) rtChart.destroy();
       rtChart = new Chart(document.getElementById('chartRT'), {
@@ -334,7 +391,12 @@
       renderWarga(ALL_DATA.filter(w => w.Nama.toLowerCase().includes(q) || w.NIK.includes(q)));
     }
 
-    function navigate(p) { document.querySelectorAll('.page').forEach(e => e.classList.toggle('active', e.id === 'page-'+p)); }
+    function navigate(p) { 
+      document.querySelectorAll('.page').forEach(e => e.classList.toggle('active', e.id === 'page-'+p));
+      // Update Bottom Nav active state
+      document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('active', e.id === 'nav-'+p));
+    }
+    
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
     function showLoading(s, t) { document.getElementById('loading').style.display = s ? 'flex' : 'none'; if(t) document.getElementById('loading-text').innerText = t; }
     function logout() { location.reload(); }
