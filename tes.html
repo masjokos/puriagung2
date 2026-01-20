@@ -34,28 +34,7 @@
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbyQnIfaRQhv6r9jL_bJ3-uX9RhyUSAnUF4kt_lTCpgkHjWtXsCk4OWTBLPxB3JDz6L0qw/exec";
 
-// Preview foto
-document.getElementById("foto").addEventListener("change", function () {
-  const file = this.files[0];
-  if (!file) return;
-
-  if (file.size > 2 * 1024 * 1024) {
-    alert("Ukuran maksimal 2MB");
-    this.value = "";
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = e => {
-    const img = document.getElementById("preview");
-    img.src = e.target.result;
-    img.style.display = "block";
-  };
-  reader.readAsDataURL(file);
-});
-
-// Submit form
-document.getElementById("formUpload").addEventListener("submit", function (e) {
+document.getElementById("formUpload").addEventListener("submit", function(e){
   e.preventDefault();
 
   const nik = document.getElementById("nik").value;
@@ -68,37 +47,36 @@ document.getElementById("formUpload").addEventListener("submit", function (e) {
   }
 
   const reader = new FileReader();
-  reader.onload = function () {
+
+  reader.onloadend = function () {
+    const base64 = reader.result; // HARUS format: data:image/...;base64,...
+
     const payload = {
       action: "saveWarga",
       args: [{
         nik: nik,
         nama: nama,
-        fotoData: reader.result
+        fotoData: base64
       }]
     };
 
     fetch(API_URL, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     })
     .then(res => res.json())
     .then(res => {
-      if (res.success) {
-        document.getElementById("status").innerHTML =
-          "✅ Upload berhasil<br>URL Foto: <br><a href='" + res.url + "' target='_blank'>" + res.url + "</a>";
-      } else {
-        document.getElementById("status").innerHTML = "❌ Gagal upload";
-      }
+      console.log(res);
+      alert("Upload sukses");
     })
-    .catch(err => {
-      document.getElementById("status").innerHTML = "❌ Error: " + err;
-    });
+    .catch(err => alert(err));
   };
 
   reader.readAsDataURL(file);
 });
 </script>
+
 
 </body>
 </html>
