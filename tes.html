@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Tes Upload Foto Warga</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    input, button { padding: 8px; margin-top: 8px; width: 100%; }
+    img { margin-top: 15px; max-width: 200px; display: none; }
+    #status { margin-top: 10px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<h3>Tes Upload Foto ke Google Drive</h3>
+
+<form id="formUpload">
+  <label>NIK</label>
+  <input type="text" id="nik" placeholder="Masukkan NIK" required>
+
+  <label>Nama</label>
+  <input type="text" id="nama" placeholder="Nama warga" required>
+
+  <label>Foto</label>
+  <input type="file" id="foto" accept="image/*" required>
+
+  <button type="submit">Upload</button>
+</form>
+
+<img id="preview">
+<div id="status"></div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbyQnIfaRQhv6r9jL_bJ3-uX9RhyUSAnUF4kt_lTCpgkHjWtXsCk4OWTBLPxB3JDz6L0qw/exec";
+
+// Preview foto
+document.getElementById("foto").addEventListener("change", function () {
+  const file = this.files[0];
+  if (!file) return;
+
+  if (file.size > 2 * 1024 * 1024) {
+    alert("Ukuran maksimal 2MB");
+    this.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById("preview");
+    img.src = e.target.result;
+    img.style.display = "block";
+  };
+  reader.readAsDataURL(file);
+});
+
+// Submit form
+document.getElementById("formUpload").addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  const nik = document.getElementById("nik").value;
+  const nama = document.getElementById("nama").value;
+  const file = document.getElementById("foto").files[0];
+
+  if (!file) {
+    alert("Pilih foto");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function () {
+    const payload = {
+      action: "saveWarga",
+      args: [{
+        nik: nik,
+        nama: nama,
+        fotoData: reader.result
+      }]
+    };
+
+    fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(res => {
+      if (res.success) {
+        document.getElementById("status").innerHTML =
+          "✅ Upload berhasil<br>URL Foto: <br><a href='" + res.url + "' target='_blank'>" + res.url + "</a>";
+      } else {
+        document.getElementById("status").innerHTML = "❌ Gagal upload";
+      }
+    })
+    .catch(err => {
+      document.getElementById("status").innerHTML = "❌ Error: " + err;
+    });
+  };
+
+  reader.readAsDataURL(file);
+});
+</script>
+
+</body>
+</html>
