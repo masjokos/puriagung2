@@ -41,41 +41,30 @@ document.getElementById("formUpload").addEventListener("submit", function(e){
   const nama = document.getElementById("nama").value;
   const file = document.getElementById("foto").files[0];
 
-  if (!file) {
-    alert("Pilih foto");
-    return;
-  }
-
   const reader = new FileReader();
-
   reader.onloadend = function () {
-    const base64 = reader.result; // HARUS format: data:image/...;base64,...
 
-    const payload = {
-      action: "saveWarga",
-      args: [{
-        nik: nik,
-        nama: nama,
-        fotoData: base64
-      }]
-    };
+    const formData = new URLSearchParams();
+    formData.append("action", "saveWarga");
+    formData.append("args", JSON.stringify([{
+      nik: nik,
+      nama: nama,
+      fotoData: reader.result
+    }]));
 
     fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: formData   // ⬅️ INI KUNCI ANTI CORS
     })
-    .then(res => res.json())
-    .then(res => {
-      console.log(res);
-      alert("Upload sukses");
-    })
+    .then(r => r.json())
+    .then(r => alert("Upload sukses"))
     .catch(err => alert(err));
   };
 
   reader.readAsDataURL(file);
 });
 </script>
+
 
 
 </body>
