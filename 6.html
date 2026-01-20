@@ -35,10 +35,10 @@
         
         <div id="api-error-box" class="hidden p-4 bg-amber-50 border border-amber-200 rounded-2xl text-left mb-4">
           <p class="text-amber-700 text-xs font-bold flex items-center gap-2">
-            <span class="material-icons text-sm">warning</span> Koneksi API Terhambat
+            <span class="material-icons text-sm">warning</span> Masalah Koneksi Cloud
           </p>
-          <p class="text-amber-600 text-[10px] mt-1">Browser memblokir akses ke Google Script (CORS). Klik tombol di bawah untuk mencoba fitur dengan data contoh.</p>
-          <button type="button" onclick="activateDemoMode()" class="mt-2 w-full py-2 bg-amber-500 text-white text-[10px] font-black rounded-lg">AKTIFKAN MODE DEMO</button>
+          <p class="text-amber-600 text-[10px] mt-1">Google Script menolak koneksi langsung (CORS). Pastikan skrip Anda sudah di-deploy sebagai 'Web App' dengan akses 'Anyone'.</p>
+          <button type="button" onclick="activateDemoMode()" class="mt-2 w-full py-2 bg-amber-500 text-white text-[10px] font-black rounded-lg">MASUK MODE DEMO (TANPA DATABASE)</button>
         </div>
 
         <div id="login-error" class="hidden p-4 bg-red-50 text-red-600 text-sm rounded-xl mb-4"></div>
@@ -53,7 +53,7 @@
       <div class="flex items-center gap-2">
         <span class="material-icons text-blue-600">analytics</span>
         <h1 class="font-bold text-slate-800">E-Warga</h1>
-        <span id="badge-demo" class="hidden px-2 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black rounded-md">DEMO</span>
+        <span id="badge-demo" class="hidden px-2 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black rounded-md">MODE DEMO</span>
       </div>
       <nav class="flex gap-2">
         <button onclick="navigate('dashboard')" class="p-2 rounded-xl hover:bg-slate-100" title="Dashboard"><span class="material-icons">dashboard</span></button>
@@ -159,10 +159,10 @@
   <div id="loading" class="fixed inset-0 bg-white/60 backdrop-blur-md z-[200] hidden flex-col items-center justify-center">
     <div class="loader mb-4"></div>
     <p class="text-xs font-black text-slate-400" id="loading-text">MEMPROSES...</p>
-    <button id="cancel-loading" onclick="showLoading(false)" class="mt-4 text-[10px] text-red-500 font-bold hidden underline">BATALKAN</button>
   </div>
 
   <script>
+    // URL API Google Script Anda
     const API_URL = "https://script.google.com/macros/s/AKfycbyQnIfaRQhv6r9jL_bJ3-uX9RhyUSAnUF4kt_lTCpgkHjWtXsCk4OWTBLPxB3JDz6L0qw/exec";
     
     let ALL_DATA = [];
@@ -170,46 +170,59 @@
     let IS_DEMO_MODE = false;
 
     /**
-     * FUNGSI KRUSIAL: Menjalankan backend menggunakan Fetch API dengan fallback Mode Demo.
+     * FUNGSI KRUSIAL: Memanggil Google Apps Script menggunakan JSONP.
+     * Metode ini melewati batasan CORS karena browser menganggap respons sebagai file JS.
      */
-    async function runBackend(functionName, args = []) {
-      if (IS_DEMO_MODE) return getDemoData(functionName);
+    function runBackend(functionName, args = []) {
+      if (IS_DEMO_MODE) return Promise.resolve(getDemoData(functionName));
 
-      try {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+        
+        // Timeout jika server tidak merespons
+        const timeout = setTimeout(() => {
+          delete window[callbackName];
+          document.getElementById('api-error-box').classList.remove('hidden');
+          reject(new Error("Request Timeout - Kemungkinan masalah CORS atau Script tidak merespons"));
+        }, 15000);
+
+        window[callbackName] = function(data) {
+          clearTimeout(timeout);
+          delete window[callbackName];
+          document.body.removeChild(script);
+          resolve(data);
+        };
+
+        const script = document.createElement('script');
         const params = new URLSearchParams({
           action: functionName,
-          args: JSON.stringify(args)
+          args: JSON.stringify(args),
+          callback: callbackName // Parameter ini harus ditangani di .gs: return ContentService.createTextOutput(callback + '(' + JSON.stringify(result) + ')').setMimeType(ContentService.MimeType.JAVASCRIPT);
         });
 
-        // Menggunakan Fetch API sebagai pengganti JSONP yang diblokir
-        const response = await fetch(`${API_URL}?${params.toString()}`, {
-          method: 'GET',
-          mode: 'cors', // Pastikan Apps Script mengizinkan CORS
-          cache: 'no-cache'
-        });
-
-        if (!response.ok) throw new Error("Respons Server Tidak Ok");
-        return await response.json();
-      } catch (err) {
-        console.error("Fetch Error:", err);
-        document.getElementById('api-error-box').classList.remove('hidden');
-        throw err;
-      }
+        script.src = `${API_URL}?${params.toString()}`;
+        script.onerror = () => {
+          clearTimeout(timeout);
+          document.getElementById('api-error-box').classList.remove('hidden');
+          reject(new Error("Gagal memuat skrip dari Google. Periksa deployment Web App Anda."));
+        };
+        document.body.appendChild(script);
+      });
     }
 
     function activateDemoMode() {
       IS_DEMO_MODE = true;
       document.getElementById('api-error-box').classList.add('hidden');
       document.getElementById('badge-demo').classList.remove('hidden');
-      alert("Mode Demo Diaktifkan. Anda dapat mencoba aplikasi dengan data contoh.");
+      enterApp();
     }
 
     function getDemoData(action) {
       if (action === 'checkLogin') return { success: true };
       if (action === 'getAllWarga') return [
-        { NIK: "3201010101010001", Nama: "Rian Hidayat", RT: "01", Pekerjaan: "Karyawan", Status_Keluarga: "Kepala Keluarga", NO_KK: "KK001", Kelamin: "Laki-Laki" },
-        { NIK: "3201010101010002", Nama: "Lina Marlina", RT: "01", Pekerjaan: "IRT", Status_Keluarga: "Istri", NO_KK: "KK001", Kelamin: "Perempuan" },
-        { NIK: "3201010101010003", Nama: "Dadang Sudrajat", RT: "02", Pekerjaan: "Wiraswasta", Status_Keluarga: "Kepala Keluarga", NO_KK: "KK002", Kelamin: "Laki-Laki" }
+        { NIK: "3201010101010001", Nama: "Budi Santoso (Demo)", RT: "01", Pekerjaan: "Wiraswasta", Status_Keluarga: "Kepala Keluarga", NO_KK: "KK101", Kelamin: "Laki-Laki" },
+        { NIK: "3201010101010002", Nama: "Siti Aminah (Demo)", RT: "01", Pekerjaan: "IRT", Status_Keluarga: "Istri", NO_KK: "KK101", Kelamin: "Perempuan" },
+        { NIK: "3201010101010003", Nama: "Ahmad Jaelani (Demo)", RT: "02", Pekerjaan: "Buruh", Status_Keluarga: "Kepala Keluarga", NO_KK: "KK102", Kelamin: "Laki-Laki" }
       ];
       return { success: true };
     }
@@ -229,13 +242,12 @@
         if(res === true || (res && res.success)) {
           enterApp();
         } else {
-          loginError.innerText = "Kredensial salah.";
+          loginError.innerText = "Kredensial tidak valid.";
           loginError.classList.remove('hidden');
           showLoading(false);
         }
       } catch (err) {
         showLoading(false);
-        // Error sudah ditangani di runBackend (menampilkan error box)
       }
     });
 
@@ -246,7 +258,7 @@
     }
 
     async function refreshData() {
-      showLoading(true, "SINKRONISASI DATA...");
+      showLoading(true, "MENGAMBIL DATA...");
       try {
         const res = await runBackend('getAllWarga');
         ALL_DATA = Array.isArray(res) ? res : (res && res.data ? res.data : []);
@@ -254,7 +266,7 @@
         renderKK();
         updateCharts();
       } catch (e) {
-        console.error("Refresh Error:", e);
+        console.error("Data Error:", e);
       }
       showLoading(false);
     }
@@ -263,17 +275,17 @@
       const list = filter || ALL_DATA;
       const container = document.getElementById('warga-list');
       if (!list.length) {
-        container.innerHTML = '<div class="col-span-full text-center py-20 text-slate-400 font-medium italic">Data tidak ditemukan</div>';
+        container.innerHTML = '<div class="col-span-full text-center py-20 text-slate-400">Data kosong</div>';
         return;
       }
       container.innerHTML = list.map(w => `
         <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer" onclick="openForm('${w.NIK}')">
           <div class="flex justify-between items-start mb-2">
-            <h4 class="font-bold text-slate-800 leading-tight">${w.Nama || 'N/A'}</h4>
+            <h4 class="font-bold text-slate-800">${w.Nama || 'N/A'}</h4>
             <span class="text-[10px] font-black text-slate-300">#${String(w.NIK || '0000').slice(-4)}</span>
           </div>
-          <p class="text-[11px] text-slate-400 font-medium mb-4 italic">${w.NIK || '-'}</p>
-          <div class="flex flex-wrap gap-1">
+          <p class="text-[11px] text-slate-400 mb-4">${w.NIK || '-'}</p>
+          <div class="flex gap-1">
             <span class="px-2 py-1 bg-blue-50 text-[9px] font-black text-blue-600 rounded-lg">RT ${w.RT || '0'}</span>
             <span class="px-2 py-1 bg-slate-50 text-[9px] font-black text-slate-500 rounded-lg uppercase">${w.Pekerjaan || 'UMUM'}</span>
           </div>
@@ -284,31 +296,23 @@
     function renderKK() {
       const heads = ALL_DATA.filter(w => w.Status_Keluarga === 'Kepala Keluarga');
       const container = document.getElementById('kk-list');
-      if (!heads.length) {
-        container.innerHTML = '<div class="col-span-full text-center py-20 text-slate-400">Data KK belum tersedia</div>';
-        return;
-      }
-      container.innerHTML = heads.map(h => {
+      container.innerHTML = heads.length ? heads.map(h => {
         const members = ALL_DATA.filter(w => w.NO_KK === h.NO_KK && w.NIK !== h.NIK);
         return `
-          <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+          <div class="bg-white p-6 rounded-3xl border border-slate-100">
             <div class="flex items-center gap-3 mb-4">
-              <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 font-black text-xs">KK</div>
+              <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 font-bold text-xs">KK</div>
               <div>
                 <h3 class="font-black text-slate-800">${h.Nama}</h3>
-                <p class="text-[10px] text-slate-400 font-bold tracking-widest">NO. ${h.NO_KK || '-'}</p>
+                <p class="text-[10px] text-slate-400 uppercase">KK: ${h.NO_KK || '-'}</p>
               </div>
             </div>
             <div class="space-y-1">
-              ${members.length ? members.map(m => `
-                <div class="p-3 bg-slate-50 rounded-2xl text-[11px] font-bold flex justify-between items-center">
-                  <span class="text-slate-700">${m.Nama}</span>
-                  <span class="px-2 py-0.5 bg-white text-[9px] text-slate-400 rounded-md border border-slate-100 uppercase">${m.Status_Keluarga}</span>
-                </div>`).join('') : '<p class="text-[10px] text-slate-300 italic py-2">Satu anggota</p>'}
+              ${members.map(m => `<div class="p-2 bg-slate-50 rounded-xl text-[11px] flex justify-between"><span>${m.Nama}</span><span class="text-slate-400 italic">${m.Status_Keluarga}</span></div>`).join('')}
             </div>
           </div>
         `;
-      }).join('');
+      }).join('') : '<div class="col-span-full text-center py-20 text-slate-400">Belum ada data KK</div>';
     }
 
     async function updateCharts() {
@@ -321,17 +325,17 @@
     }
 
     function drawCharts(stats) {
-      const config = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' } } } } };
+      const config = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } };
       if(genderChart) genderChart.destroy();
       genderChart = new Chart(document.getElementById('chartGender'), {
         type: 'doughnut',
-        data: { labels: Object.keys(stats.gender), datasets: [{ data: Object.values(stats.gender), backgroundColor: ['#3b82f6', '#ec4899'], borderWeight: 0, cutout: '70%' }] },
+        data: { labels: Object.keys(stats.gender), datasets: [{ data: Object.values(stats.gender), backgroundColor: ['#3b82f6', '#ec4899'] }] },
         options: config
       });
       if(rtChart) rtChart.destroy();
       rtChart = new Chart(document.getElementById('chartRT'), {
         type: 'bar',
-        data: { labels: Object.keys(stats.rt).map(r => 'RT ' + r), datasets: [{ label: 'Warga', data: Object.values(stats.rt), backgroundColor: '#6366f1', borderRadius: 8 }] },
+        data: { labels: Object.keys(stats.rt).map(r => 'RT ' + r), datasets: [{ label: 'Warga', data: Object.values(stats.rt), backgroundColor: '#6366f1' }] },
         options: config
       });
     }
@@ -339,10 +343,10 @@
     function openForm(nik = null) {
       const form = document.getElementById('warga-form');
       form.reset();
-      document.getElementById('form-title').innerText = nik ? "Sunting Data Warga" : "Tambah Warga Baru";
+      document.getElementById('form-title').innerText = nik ? "Sunting Warga" : "Tambah Warga";
       if(nik) {
         const w = ALL_DATA.find(x => x.NIK == nik);
-        if (w) { Object.keys(w).forEach(key => { const field = form.querySelector(`[name="${key}"]`); if(field) field.value = w[key]; }); }
+        if (w) Object.keys(w).forEach(key => { const f = form.querySelector(`[name="${key}"]`); if(f) f.value = w[key]; });
       }
       document.getElementById('modal-form').classList.add('active');
     }
@@ -362,14 +366,13 @@
       try {
         const res = await runBackend('saveWarga', [formData]);
         if(res && res.success) { closeModal('modal-form'); refreshData(); }
-        else { alert("Gagal menyimpan."); showLoading(false); }
+        else { alert("Simpan gagal."); showLoading(false); }
       } catch (err) { showLoading(false); }
     });
 
     function filterData() {
       const q = document.getElementById('search-input').value.toLowerCase();
-      const filtered = ALL_DATA.filter(w => (w.Nama && w.Nama.toLowerCase().includes(q)) || (w.NIK && String(w.NIK).includes(q)));
-      renderWarga(filtered);
+      renderWarga(ALL_DATA.filter(w => (w.Nama && w.Nama.toLowerCase().includes(q)) || (w.NIK && String(w.NIK).includes(q))));
     }
 
     function navigate(p) {
@@ -379,8 +382,7 @@
 
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
     function showLoading(s, text = "MEMPROSES...") { 
-      const el = document.getElementById('loading');
-      el.style.display = s ? 'flex' : 'none'; 
+      document.getElementById('loading').style.display = s ? 'flex' : 'none'; 
       document.getElementById('loading-text').innerText = text;
     }
     function logout() { location.reload(); }
