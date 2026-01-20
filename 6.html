@@ -20,7 +20,7 @@
 </head>
 <body class="bg-slate-50">
 
-  <!-- LOGIN -->
+  <!-- LOGIN PAGE -->
   <div id="login-page" class="fixed inset-0 bg-white z-[100] flex items-center justify-center p-4">
     <div class="w-full max-w-md text-center">
       <div class="bg-blue-600 text-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-200">
@@ -39,44 +39,44 @@
   <!-- MAIN APP -->
   <div id="main-app" class="hidden min-h-screen">
     <header class="bg-white border-b px-6 py-4 sticky top-0 z-40 flex justify-between items-center">
-      <span class="font-black text-blue-600 tracking-tighter text-xl">E-WARGA</span>
-      <button onclick="logout()" class="text-red-500"><span class="material-icons">logout</span></button>
+      <span class="font-black text-blue-600 tracking-tighter text-xl uppercase">Sistem E-Warga</span>
+      <button onclick="logout()" class="text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors"><span class="material-icons">logout</span></button>
     </header>
 
     <main class="max-w-5xl mx-auto p-4 md:p-8">
       <!-- DASHBOARD -->
       <section id="page-dashboard" class="page active">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm text-center">
             <p class="text-[10px] font-bold text-slate-400 uppercase">Total Warga</p>
             <h3 id="stat-total" class="text-2xl font-black">0</h3>
           </div>
-          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm text-center">
             <p class="text-[10px] font-bold text-slate-400 uppercase">Kepala Keluarga</p>
             <h3 id="stat-kk" class="text-2xl font-black text-blue-600">0</h3>
           </div>
-          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm text-center">
             <p class="text-[10px] font-bold text-slate-400 uppercase">Laki-Laki</p>
-            <h3 id="stat-pria" class="text-2xl font-black">0</h3>
+            <h3 id="stat-pria" class="text-2xl font-black text-blue-500">0</h3>
           </div>
-          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm text-center">
             <p class="text-[10px] font-bold text-slate-400 uppercase">Perempuan</p>
-            <h3 id="stat-wanita" class="text-2xl font-black">0</h3>
+            <h3 id="stat-wanita" class="text-2xl font-black text-pink-500">0</h3>
           </div>
         </div>
 
-        <div class="bg-white p-6 rounded-3xl border border-slate-100 mb-6 h-64">
+        <div class="bg-white p-6 rounded-3xl border border-slate-100 mb-6 h-64 shadow-sm">
            <canvas id="chartRT"></canvas>
         </div>
 
-        <h3 class="font-bold text-slate-800 mb-4">Warga Terbaru</h3>
+        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><span class="material-icons text-blue-500">history</span> Warga Terbaru</h3>
         <div id="recent-list" class="space-y-2"></div>
       </section>
 
       <!-- DATA WARGA -->
       <section id="page-warga" class="page">
         <div class="mb-4 relative">
-          <input type="text" id="search" oninput="doSearch()" placeholder="Cari Nama/NIK..." class="w-full pl-12 pr-4 py-4 bg-white rounded-2xl border-none shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          <input type="text" id="search" oninput="doSearch()" placeholder="Cari Nama atau NIK..." class="w-full pl-12 pr-4 py-4 bg-white rounded-2xl border-none shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
           <span class="material-icons absolute left-4 top-4 text-slate-400">search</span>
         </div>
         <div id="warga-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
@@ -84,39 +84,46 @@
 
       <!-- DATA KK -->
       <section id="page-kk" class="page">
-        <h2 class="text-xl font-black mb-4">Daftar Kepala Keluarga</h2>
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-black text-slate-800 uppercase tracking-tight">Daftar Keluarga</h2>
+          <span id="kk-count" class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold">0 KK</span>
+        </div>
         <div id="kk-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
       </section>
     </main>
 
     <!-- NAVIGATION -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-3 z-50">
-      <button onclick="navigate('dashboard')" id="nav-dashboard" class="nav-item active flex flex-col items-center gap-1">
-        <span class="material-icons">dashboard</span><span class="text-[10px] font-bold">Home</span>
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-3 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+      <button onclick="navigate('dashboard')" id="nav-dashboard" class="nav-item active flex flex-col items-center gap-1 transition-all">
+        <span class="material-icons">dashboard</span><span class="text-[10px] font-bold">Beranda</span>
       </button>
-      <button onclick="navigate('warga')" id="nav-warga" class="nav-item flex flex-col items-center gap-1">
+      <button onclick="navigate('warga')" id="nav-warga" class="nav-item flex flex-col items-center gap-1 transition-all">
         <span class="material-icons">people</span><span class="text-[10px] font-bold">Warga</span>
       </button>
-      <button onclick="navigate('kk')" id="nav-kk" class="nav-item flex flex-col items-center gap-1">
+      <button onclick="navigate('kk')" id="nav-kk" class="nav-item flex flex-col items-center gap-1 transition-all">
         <span class="material-icons">groups</span><span class="text-[10px] font-bold">Keluarga</span>
       </button>
     </nav>
   </div>
 
   <!-- DETAIL MODAL -->
-  <div id="modal-detail" class="modal">
-    <div class="bg-white w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl">
-      <div class="p-6 border-b flex justify-between items-center">
+  <div id="modal-detail" class="modal" onclick="if(event.target == this) closeModal()">
+    <div class="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl mx-4 transform transition-all scale-100">
+      <div class="p-6 border-b flex justify-between items-center bg-slate-50/50">
         <h3 class="font-black text-slate-800">Detail Informasi</h3>
-        <button onclick="closeModal()"><span class="material-icons">close</span></button>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-200 transition-all"><span class="material-icons">close</span></button>
       </div>
       <div id="detail-body" class="p-6 space-y-4 max-h-[70vh] overflow-y-auto"></div>
     </div>
   </div>
 
-  <div id="loading" class="fixed inset-0 bg-white/80 z-[200] hidden flex flex-col items-center justify-center">
-    <div class="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-600 mb-2"></div>
-    <p class="text-xs font-bold text-slate-500">MEMUAT DATA...</p>
+  <!-- LOADING INDICATOR -->
+  <div id="loading" class="fixed inset-0 bg-white/95 z-[200] hidden flex flex-col items-center justify-center">
+    <div class="relative w-16 h-16 mb-4">
+      <div class="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+      <div class="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
+    </div>
+    <p class="text-xs font-bold text-slate-500 tracking-widest uppercase animate-pulse">Sinkronisasi Data...</p>
   </div>
 
   <script>
@@ -124,24 +131,50 @@
     let ALL_DATA = [];
     let rtChart;
 
-    const clean = (val) => (val === undefined || val === null || val === "" || val === "-") ? "-" : String(val).trim();
+    /**
+     * getVal yang diperkuat untuk mendeteksi KK (Kolom B) dan Status (Kolom O)
+     */
+    const getVal = (obj, pattern) => {
+      const keys = Object.keys(obj);
+      const normPattern = pattern.toLowerCase().replace(/[^a-z0-9]/g, '');
+      
+      const match = keys.find(k => {
+        const normK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return normK.includes(normPattern);
+      });
+      return match ? obj[match] : "";
+    };
+
+    const clean = (val) => {
+      if (val === undefined || val === null || val === "" || val === "-" || val === "undefined") return "-";
+      return String(val).trim();
+    };
 
     async function callAPI(action, args = []) {
-      const url = `${API_URL}?action=${action}&args=${encodeURIComponent(JSON.stringify(args))}`;
-      const res = await fetch(url);
-      return await res.json();
+      try {
+        const url = `${API_URL}?action=${action}&args=${encodeURIComponent(JSON.stringify(args))}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Gagal terhubung ke server");
+        return await res.json();
+      } catch (e) {
+        console.error("API Error:", e);
+        return { success: false, error: e.message };
+      }
     }
 
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       toggleLoading(true);
-      const res = await callAPI('checkLogin', [document.getElementById('username').value, document.getElementById('password').value]);
-      if(res.success) {
+      const user = document.getElementById('username').value;
+      const pass = document.getElementById('password').value;
+      const res = await callAPI('checkLogin', [user, pass]);
+      
+      if(res && res.success) {
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('main-app').classList.remove('hidden');
         await refreshData();
       } else {
-        alert("Login Gagal!");
+        alert("Login Gagal! Pastikan Username & Password sesuai.");
       }
       toggleLoading(false);
     });
@@ -149,45 +182,59 @@
     async function refreshData() {
       toggleLoading(true);
       const data = await callAPI('getAllWarga');
-      // Karena backend Code.gs Anda mengirimkan Array of Object, kita langsung pakai.
-      ALL_DATA = data;
-      console.log("Data Received:", ALL_DATA); 
-      updateUI();
+      if (Array.isArray(data)) {
+        ALL_DATA = data;
+        console.log("Data Mentah:", ALL_DATA[0]); // Untuk debug header
+        updateUI();
+      } else {
+        alert("Data gagal dimuat.");
+      }
       toggleLoading(false);
     }
 
     function updateUI() {
-      // Statistik
-      const stats = {
-        total: ALL_DATA.length,
-        kk: ALL_DATA.filter(w => String(w["Status Hubungan Keluarga"]).toLowerCase().includes("kepala keluarga")).length,
-        pria: ALL_DATA.filter(w => w.Kelamin === "Laki-Laki").length,
-        wanita: ALL_DATA.filter(w => w.Kelamin === "Perempuan").length,
-        rt: {}
-      };
+      if (ALL_DATA.length === 0) return;
 
-      document.getElementById('stat-total').innerText = stats.total;
-      document.getElementById('stat-kk').innerText = stats.kk;
-      document.getElementById('stat-pria').innerText = stats.pria;
-      document.getElementById('stat-wanita').innerText = stats.wanita;
+      // Ambil List Kepala Keluarga (Cek Kolom O: "Status Keluarga" atau "Hubungan")
+      const listKK = ALL_DATA.filter(w => {
+        const statusKeluarga = clean(getVal(w, "Status Keluarga")).toLowerCase();
+        const hubungan = clean(getVal(w, "Hubungan")).toLowerCase();
+        return statusKeluarga.includes("kepala") || hubungan.includes("kepala");
+      });
 
-      // Chart RT
-      ALL_DATA.forEach(w => { if(w.RT) stats.rt[w.RT] = (stats.rt[w.RT] || 0) + 1; });
-      renderChart(stats.rt);
+      // Update Dashboard Stats
+      document.getElementById('stat-total').innerText = ALL_DATA.length;
+      document.getElementById('stat-kk').innerText = listKK.length;
+      document.getElementById('kk-count').innerText = listKK.length + " KK";
+      
+      const pria = ALL_DATA.filter(w => clean(getVal(w, "Kelamin")).toLowerCase().startsWith("l")).length;
+      const wanita = ALL_DATA.filter(w => clean(getVal(w, "Kelamin")).toLowerCase().startsWith("p")).length;
+      document.getElementById('stat-pria').innerText = pria;
+      document.getElementById('stat-wanita').innerText = wanita;
 
-      // Render Lists
+      const rtStats = {};
+      ALL_DATA.forEach(w => { 
+        const rt = clean(getVal(w, "RT"));
+        if(rt !== "-") rtStats[rt] = (rtStats[rt] || 0) + 1; 
+      });
+      renderChart(rtStats);
       renderRecent();
       renderWarga();
-      renderKK();
+      renderKK(listKK);
     }
 
     function renderRecent() {
       const recent = [...ALL_DATA].reverse().slice(0, 5);
       document.getElementById('recent-list').innerHTML = recent.map(w => `
-        <div class="bg-white p-4 rounded-2xl flex justify-between items-center border border-slate-50" onclick="showDetail('${w.NIK}')">
+        <div class="bg-white p-4 rounded-2xl flex justify-between items-center border border-slate-100 hover:shadow-md transition-all cursor-pointer group" onclick="showDetail('${getVal(w, "NIK")}')">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600"><span class="material-icons">person</span></div>
-            <div><p class="text-sm font-bold">${w.Nama}</p><p class="text-[10px] text-slate-400 uppercase">RT ${w.RT} • ${w["Status Hubungan Keluarga"]}</p></div>
+            <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+              <span class="material-icons text-sm">person</span>
+            </div>
+            <div>
+              <p class="text-sm font-bold text-slate-700">${getVal(w, "Nama")}</p>
+              <p class="text-[10px] text-slate-400 font-semibold">RT ${clean(getVal(w, "RT"))} • ${clean(getVal(w, "Status Keluarga"))}</p>
+            </div>
           </div>
           <span class="material-icons text-slate-300">chevron_right</span>
         </div>
@@ -197,32 +244,51 @@
     function renderWarga(data = null) {
       const list = data || ALL_DATA;
       document.getElementById('warga-list').innerHTML = list.map(w => `
-        <div class="bg-white p-5 rounded-3xl border border-slate-100 flex items-center gap-4" onclick="showDetail('${w.NIK}')">
-          <div class="w-12 h-12 bg-slate-100 rounded-2xl overflow-hidden flex items-center justify-center">
-            ${w.Foto && w.Foto !== '-' ? `<img src="${w.Foto}" class="w-full h-full object-cover">` : `<span class="material-icons text-slate-300">person</span>`}
+        <div class="bg-white p-5 rounded-3xl border border-slate-100 flex items-center gap-4 hover:border-blue-200 transition-all cursor-pointer" onclick="showDetail('${getVal(w, "NIK")}')">
+          <div class="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100">
+            ${getVal(w, "Foto").startsWith('http') ? `<img src="${getVal(w, "Foto")}" class="w-full h-full object-cover rounded-2xl">` : `<span class="material-icons text-slate-200 text-3xl">account_circle</span>`}
           </div>
-          <div class="flex-1">
-            <p class="font-bold text-slate-800">${w.Nama}</p>
-            <p class="text-[10px] text-slate-400 font-mono">${w.NIK}</p>
+          <div class="flex-1 overflow-hidden">
+            <p class="font-bold text-slate-800 truncate">${getVal(w, "Nama")}</p>
+            <p class="text-[10px] text-slate-400 font-mono tracking-tight">NIK: ${getVal(w, "NIK")}</p>
           </div>
-          <div class="text-right"><p class="text-[10px] font-black text-blue-500 uppercase">RT ${w.RT}</p></div>
+          <div class="text-right">
+            <p class="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">RT ${clean(getVal(w, "RT"))}</p>
+          </div>
         </div>
       `).join('');
     }
 
-    function renderKK() {
-      const kks = ALL_DATA.filter(w => String(w["Status Hubungan Keluarga"]).toLowerCase().includes("kepala keluarga"));
-      document.getElementById('kk-list').innerHTML = kks.map(k => {
-        const members = ALL_DATA.filter(w => w["Nomor KK"] === k["Nomor KK"] && w.NIK !== k.NIK);
+    function renderKK(listKK) {
+      if (listKK.length === 0) {
+        document.getElementById('kk-list').innerHTML = `<div class="col-span-full py-10 text-center text-slate-400 italic">Data tidak ditemukan. Pastikan header di Sheet adalah "No KK" atau "Nomor KK".</div>`;
+        return;
+      }
+
+      document.getElementById('kk-list').innerHTML = listKK.map(k => {
+        // Cek Kolom B (Nomor KK)
+        const noKK = clean(getVal(k, "KK")); 
+        const members = ALL_DATA.filter(w => clean(getVal(w, "KK")) === noKK && noKK !== "-");
+        
         return `
-          <div class="bg-white p-6 rounded-3xl border border-slate-100">
-            <div class="flex items-center gap-3 mb-4">
-              <div class="bg-blue-600 text-white p-2 rounded-xl text-xs font-black">${k.Blok}-${k.Nomer}</div>
-              <div><p class="font-bold text-slate-800">${k.Nama}</p><p class="text-[9px] text-slate-400">KK: ${k["Nomor KK"]}</p></div>
+          <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+            <div class="flex items-center gap-4 mb-5">
+              <div class="bg-blue-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center font-black shadow-lg">
+                ${clean(getVal(k, "Blok"))}
+              </div>
+              <div class="flex-1">
+                <p class="font-extrabold text-slate-800 leading-none mb-1">${getVal(k, "Nama")}</p>
+                <p class="text-[10px] text-slate-400 font-mono">NO KK: ${noKK}</p>
+              </div>
             </div>
-            <div class="space-y-1">
-               ${members.map(m => `<div class="bg-slate-50 p-2 rounded-lg flex justify-between text-[10px]"><span>${m.Nama}</span><span class="text-slate-400 italic">${m["Status Hubungan Keluarga"]}</span></div>`).join('')}
-               ${members.length === 0 ? '<p class="text-[10px] text-slate-300">Hanya KK Terdaftar</p>' : ''}
+            <div class="space-y-2 border-t pt-4">
+               <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Anggota Keluarga (${members.length})</p>
+               ${members.map(m => `
+                 <div class="bg-slate-50/50 p-2.5 rounded-xl flex justify-between items-center text-[11px]">
+                    <span class="font-bold text-slate-600">${getVal(m, "Nama")}</span>
+                    <span class="bg-white px-2 py-0.5 rounded-lg text-[9px] text-slate-400 border italic">${clean(getVal(m, "Status Keluarga"))}</span>
+                 </div>
+               `).join('')}
             </div>
           </div>
         `;
@@ -230,24 +296,22 @@
     }
 
     function showDetail(nik) {
-      const w = ALL_DATA.find(x => x.NIK == nik);
+      const w = ALL_DATA.find(x => clean(getVal(x, "NIK")) == clean(nik));
       if(!w) return;
       document.getElementById('detail-body').innerHTML = `
-        <div class="flex flex-col items-center mb-4">
-          <div class="w-24 h-24 bg-slate-100 rounded-3xl overflow-hidden mb-2">
-             ${w.Foto && w.Foto !== '-' ? `<img src="${w.Foto}" class="w-full h-full object-cover">` : `<span class="material-icons text-6xl text-slate-200 mt-4">person</span>`}
+        <div class="flex flex-col items-center mb-6">
+          <div class="w-32 h-32 bg-slate-100 rounded-[2.5rem] overflow-hidden mb-4 shadow-xl border border-slate-100">
+             ${getVal(w, "Foto").startsWith('http') ? `<img src="${getVal(w, "Foto")}" class="w-full h-full object-cover">` : `<span class="material-icons text-7xl text-slate-200 mt-6">account_circle</span>`}
           </div>
-          <h4 class="font-black text-xl">${w.Nama}</h4>
-          <span class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">${w["Status Hubungan Keluarga"]}</span>
+          <h4 class="font-black text-2xl text-slate-800 text-center leading-tight mb-2">${getVal(w, "Nama")}</h4>
+          <span class="bg-blue-600 text-white px-5 py-1.5 rounded-2xl text-[10px] font-bold uppercase tracking-widest">${clean(getVal(w, "Status Keluarga"))}</span>
         </div>
-        <div class="grid grid-cols-2 gap-4 text-xs">
-          <div><p class="text-slate-400 font-bold uppercase text-[8px]">NIK</p><p class="font-bold">${clean(w.NIK)}</p></div>
-          <div><p class="text-slate-400 font-bold uppercase text-[8px]">Nomor KK</p><p class="font-bold">${clean(w["Nomor KK"])}</p></div>
-          <div><p class="text-slate-400 font-bold uppercase text-[8px]">Tempat Lahir</p><p class="font-bold">${clean(w["Tempat Lahir"])}</p></div>
-          <div><p class="text-slate-400 font-bold uppercase text-[8px]">Tgl Lahir</p><p class="font-bold">${clean(w["Tanggal Lahir"])}</p></div>
-          <div><p class="text-slate-400 font-bold uppercase text-[8px]">No HP</p><p class="font-bold">${clean(w["No HP"])}</p></div>
-          <div><p class="text-slate-400 font-bold uppercase text-[8px]">Pekerjaan</p><p class="font-bold">${clean(w.Pekerjaan)}</p></div>
-          <div class="col-span-2"><p class="text-slate-400 font-bold uppercase text-[8px]">Alamat KTP</p><p class="bg-slate-50 p-3 rounded-xl">${clean(w["Alamat KTP"])}</p></div>
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase">NIK</p><p class="font-bold font-mono">${clean(getVal(w, "NIK"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase">No KK</p><p class="font-bold font-mono">${clean(getVal(w, "KK"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl col-span-2"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase">Alamat Lengkap</p><p class="font-bold">${clean(getVal(w, "Alamat"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase">RT / Blok</p><p class="font-bold">RT ${clean(getVal(w, "RT"))} - ${clean(getVal(w, "Blok"))}/${clean(getVal(w, "Nomer"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase">Jenis Kelamin</p><p class="font-bold">${clean(getVal(w, "Kelamin"))}</p></div>
         </div>
       `;
       document.getElementById('modal-detail').classList.add('active');
@@ -257,16 +321,17 @@
       const labels = Object.keys(rtData).sort();
       const vals = labels.map(l => rtData[l]);
       if(rtChart) rtChart.destroy();
-      rtChart = new Chart(document.getElementById('chartRT'), {
+      const ctx = document.getElementById('chartRT').getContext('2d');
+      rtChart = new Chart(ctx, {
         type: 'bar',
-        data: { labels: labels.map(l => 'RT '+l), datasets: [{ label: 'Warga', data: vals, backgroundColor: '#3b82f6', borderRadius: 10 }] },
+        data: { labels: labels.map(l => 'RT '+l), datasets: [{ data: vals, backgroundColor: '#2563eb', borderRadius: 10, barThickness: 20 }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
       });
     }
 
     function doSearch() {
       const q = document.getElementById('search').value.toLowerCase();
-      const filtered = ALL_DATA.filter(w => w.Nama.toLowerCase().includes(q) || w.NIK.toString().includes(q));
+      const filtered = ALL_DATA.filter(w => getVal(w, "Nama").toLowerCase().includes(q) || getVal(w, "NIK").toString().includes(q));
       renderWarga(filtered);
     }
 
@@ -274,6 +339,7 @@
       document.querySelectorAll('.page').forEach(e => e.classList.toggle('active', e.id === 'page-'+p));
       document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('active', e.id === 'nav-'+p));
     }
+
     function logout() { location.reload(); }
     function closeModal() { document.getElementById('modal-detail').classList.remove('active'); }
     function toggleLoading(s) { document.getElementById('loading').classList.toggle('hidden', !s); }
