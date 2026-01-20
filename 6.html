@@ -1,765 +1,389 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Puri Agung 2 - Sistem Warga</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        :root { --primary: #4f46e5; --bg: #f8fafc; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg); overflow-x: hidden; }
-        .nav-active { color: var(--primary); font-weight: 700; }
-        .nav-active i { transform: translateY(-4px); transition: all 0.3s ease; color: var(--primary); }
-        .card-shadow { box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05); }
-        .hide-scroll::-webkit-scrollbar { display: none; }
-        .modal-enter { animation: modalIn 0.3s ease-out; }
-        @keyframes modalIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        input:focus, select:focus, textarea:focus { border-color: var(--primary); ring: 2px; ring-color: rgba(79, 70, 229, 0.1); }
-        .bottom-nav { border-radius: 24px 24px 0 0; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Data Warga</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    .page { display: none; padding-bottom: 100px; }
+    .page.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .modal { display: none; position: fixed; z-index: 50; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 1rem; }
+    .modal.active { display: flex; }
+  </style>
 </head>
-<body class="pb-24 md:pb-0">
+<body class="bg-slate-50">
 
-    <!-- Loading Overlay -->
-    <div id="loader" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-[9999] hidden flex flex-col items-center justify-center">
-        <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-        <p class="mt-4 font-bold text-indigo-600 text-sm tracking-widest uppercase" id="loaderText">Memproses...</p>
-    </div>
-
-    <!-- Login Section -->
-    <section id="loginPage" class="min-h-screen flex items-center justify-center p-6 bg-slate-50">
-        <div class="w-full max-w-md bg-white p-8 rounded-[2.5rem] shadow-2xl shadow-indigo-100 border border-slate-100">
-            <div class="text-center mb-10">
-                <div class="bg-indigo-600 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 text-white shadow-xl shadow-indigo-200">
-                    <i data-lucide="shield-check" size="40"></i>
-                </div>
-                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Puri Agung 2</h1>
-                <p class="text-slate-400 mt-2 font-medium">Sistem Pendataan Warga Digital</p>
-            </div>
-            <form id="loginForm" class="space-y-5">
-                <div>
-                    <label class="text-[11px] font-bold uppercase text-slate-400 ml-1 tracking-wider">Username</label>
-                    <input type="text" id="username" required class="w-full px-5 py-4 mt-1.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all" placeholder="Admin">
-                </div>
-                <div>
-                    <label class="text-[11px] font-bold uppercase text-slate-400 ml-1 tracking-wider">Password</label>
-                    <input type="password" id="password" required class="w-full px-5 py-4 mt-1.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all" placeholder="••••••••">
-                </div>
-                <button type="submit" class="w-full bg-indigo-600 text-white py-5 rounded-2xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">Masuk Sekarang</button>
-            </form>
-        </div>
-    </section>
-
-    <!-- App Container -->
-    <section id="appPage" class="hidden flex min-h-screen bg-slate-50">
-        <!-- Sidebar (Desktop) -->
-        <aside class="hidden lg:flex w-72 bg-white border-r border-slate-100 flex-col sticky top-0 h-screen">
-            <div class="p-8 flex items-center gap-4">
-                <div class="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-100">
-                    <i data-lucide="home" size="20"></i>
-                </div>
-                <h2 class="font-black text-xl tracking-tight text-slate-800">PuriAgung2</h2>
-            </div>
-            <nav class="flex-1 px-4 space-y-1">
-                <button onclick="showPage('dashboard')" class="nav-item group flex items-center gap-4 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all text-slate-500 font-semibold" data-page="dashboard">
-                    <i data-lucide="layout-dashboard"></i> Dashboard
-                </button>
-                <button onclick="showPage('dataWarga')" class="nav-item group flex items-center gap-4 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all text-slate-500 font-semibold" data-page="dataWarga">
-                    <i data-lucide="users"></i> Data Warga
-                </button>
-                <button onclick="showPage('dataKK')" class="nav-item group flex items-center gap-4 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all text-slate-500 font-semibold" data-page="dataKK">
-                    <i data-lucide="book-user"></i> Kepala Keluarga
-                </button>
-                <button onclick="showPage('tambahData')" class="nav-item group flex items-center gap-4 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all text-slate-500 font-semibold" data-page="tambahData">
-                    <i data-lucide="plus-circle"></i> Tambah Data
-                </button>
-            </nav>
-            <div class="p-6">
-                <button onclick="logout()" class="flex items-center gap-3 w-full p-4 bg-rose-50 text-rose-600 rounded-2xl font-bold text-sm transition-all hover:bg-rose-100">
-                    <i data-lucide="log-out"></i> Logout
-                </button>
-            </div>
-        </aside>
-
-        <!-- Main Content Area -->
-        <main class="flex-1 min-w-0 flex flex-col">
-            <header class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-6 sticky top-0 z-40">
-                <div class="flex items-center gap-4 lg:hidden">
-                    <div class="bg-indigo-600 p-2 rounded-lg text-white">
-                        <i data-lucide="home" size="18"></i>
-                    </div>
-                    <span class="font-black text-slate-800">PA2</span>
-                </div>
-                <h1 id="headerTitle" class="text-lg font-bold text-slate-800 hidden lg:block uppercase tracking-widest">Dashboard</h1>
-                <div class="flex items-center gap-4">
-                    <div class="text-right hidden sm:block">
-                        <p id="userName" class="text-sm font-bold text-slate-800 leading-none">Admin</p>
-                        <span id="userRole" class="text-[10px] font-bold text-indigo-500 uppercase">Super Admin</span>
-                    </div>
-                    <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-                        <i data-lucide="user"></i>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Page Dynamic Container -->
-            <div id="pageContainer" class="p-6 max-w-7xl mx-auto w-full flex-1"></div>
-        </main>
-
-        <!-- Bottom Navigation (Mobile) -->
-        <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 h-20 bottom-nav px-6 flex items-center justify-between z-50">
-            <button onclick="showPage('dashboard')" class="nav-item flex flex-col items-center gap-1 text-slate-400" data-page="dashboard">
-                <i data-lucide="layout-dashboard"></i><span class="text-[10px] font-bold">Dash</span>
-            </button>
-            <button onclick="showPage('dataWarga')" class="nav-item flex flex-col items-center gap-1 text-slate-400" data-page="dataWarga">
-                <i data-lucide="users"></i><span class="text-[10px] font-bold">Warga</span>
-            </button>
-            <button onclick="showPage('tambahData')" class="bg-indigo-600 w-14 h-14 rounded-2xl -mt-10 flex items-center justify-center text-white shadow-xl shadow-indigo-200 border-4 border-slate-50 active:scale-90 transition-all">
-                <i data-lucide="plus" size="28"></i>
-            </button>
-            <button onclick="showPage('dataKK')" class="nav-item flex flex-col items-center gap-1 text-slate-400" data-page="dataKK">
-                <i data-lucide="book-user"></i><span class="text-[10px] font-bold">KK</span>
-            </button>
-            <button onclick="logout()" class="flex flex-col items-center gap-1 text-rose-400">
-                <i data-lucide="log-out"></i><span class="text-[10px] font-bold">Keluar</span>
-            </button>
-        </nav>
-    </section>
-
-    <!-- Modal Detail & Edit -->
-    <div id="modalContainer" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
-        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal()"></div>
-        <div class="bg-white w-full max-w-2xl max-h-[90vh] rounded-[2.5rem] overflow-hidden flex flex-col z-10 modal-enter">
-            <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-indigo-600 text-white">
-                <h3 class="font-bold uppercase tracking-widest text-sm" id="modalTitle">Detail Warga</h3>
-                <button onclick="closeModal()" class="hover:bg-white/10 p-2 rounded-full transition-all"><i data-lucide="x"></i></button>
-            </div>
-            <div class="flex-1 overflow-y-auto p-8 hide-scroll" id="modalBody"></div>
-        </div>
-    </div>
-
-    <script>
-        // GANTI INI DENGAN URL DEPLOYMENT GOOGLE APPS SCRIPT ANDA
-        const API_URL = "https://script.google.com/macros/s/AKfycbw_1NS4tKBP8nZPuJInNvbo72zG8GKJI8xzl1TEKsHugg7UwAZT-fqbMgJEPEDfykPx0Q/exec";
+  <!-- HALAMAN LOGIN -->
+  <div id="login-page" class="fixed inset-0 bg-white z-[100] flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 border border-slate-100 text-center">
+      <div class="bg-blue-600 text-white w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6">
+        <span class="material-icons text-5xl">location_city</span>
+      </div>
+      <h2 class="text-3xl font-black text-slate-800">E-Warga</h2>
+      <p class="text-slate-500 mt-2 mb-8">Silakan masuk untuk akses data</p>
+      <form id="login-form" class="space-y-4 text-left">
+        <input type="text" id="username" placeholder="Username" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none" required>
+        <input type="password" id="password" placeholder="Password" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none" required>
         
-        let currentUser = null;
-        let dataWarga = [];
-        let stats = {};
+        <div id="api-error-box" class="hidden p-4 bg-amber-50 border border-amber-200 rounded-2xl text-left mb-4">
+          <p class="text-amber-700 text-xs font-bold flex items-center gap-2">
+            <span class="material-icons text-sm">warning</span> Koneksi API Terhambat
+          </p>
+          <p class="text-amber-600 text-[10px] mt-1">Browser memblokir akses ke Google Script (CORS). Klik tombol di bawah untuk mencoba fitur dengan data contoh.</p>
+          <button type="button" onclick="activateDemoMode()" class="mt-2 w-full py-2 bg-amber-500 text-white text-[10px] font-black rounded-lg">AKTIFKAN MODE DEMO</button>
+        </div>
 
-        window.onload = () => {
-            lucide.createIcons();
-            initLoginForm();
-        };
+        <div id="login-error" class="hidden p-4 bg-red-50 text-red-600 text-sm rounded-xl mb-4"></div>
+        <button type="submit" id="login-btn" class="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition-colors">Masuk</button>
+      </form>
+    </div>
+  </div>
 
-        // API Handler with JSONP
-        function fetchAPI(action, params = {}) {
-            return new Promise((resolve) => {
-                const callbackName = 'cb_' + Math.round(1000000 * Math.random());
-                const script = document.createElement('script');
-                script.id = callbackName;
-                
-                const query = new URLSearchParams({ action, callback: callbackName, ...params });
-                
-                window[callbackName] = (res) => {
-                    cleanup();
-                    resolve(res);
-                };
+  <!-- KONTEN APLIKASI UTAMA -->
+  <div id="main-app" class="hidden min-h-screen">
+    <header class="bg-white border-b sticky top-0 z-40 px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <span class="material-icons text-blue-600">analytics</span>
+        <h1 class="font-bold text-slate-800">E-Warga</h1>
+        <span id="badge-demo" class="hidden px-2 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black rounded-md">DEMO</span>
+      </div>
+      <nav class="flex gap-2">
+        <button onclick="navigate('dashboard')" class="p-2 rounded-xl hover:bg-slate-100" title="Dashboard"><span class="material-icons">dashboard</span></button>
+        <button onclick="navigate('datawarga')" class="p-2 rounded-xl hover:bg-slate-100" title="Data Warga"><span class="material-icons">people</span></button>
+        <button onclick="navigate('kk')" class="p-2 rounded-xl hover:bg-slate-100" title="Data KK"><span class="material-icons">groups</span></button>
+        <button onclick="logout()" class="p-2 rounded-xl text-red-500 hover:bg-red-50" title="Keluar"><span class="material-icons">logout</span></button>
+      </nav>
+    </header>
 
-                const cleanup = () => {
-                    const el = document.getElementById(callbackName);
-                    if(el) el.remove();
-                    delete window[callbackName];
-                };
+    <main class="max-w-7xl mx-auto p-4 md:p-8">
+      <!-- DASHBOARD -->
+      <section id="page-dashboard" class="page active">
+        <h2 class="text-2xl font-black mb-6">Dashboard Ringkasan</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+             <h4 class="font-bold mb-4">Statistik Gender</h4>
+             <div class="h-64"><canvas id="chartGender"></canvas></div>
+          </div>
+          <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+             <h4 class="font-bold mb-4">Statistik RT</h4>
+             <div class="h-64"><canvas id="chartRT"></canvas></div>
+          </div>
+        </div>
+      </section>
 
-                script.src = `${API_URL}?${query.toString()}`;
-                script.onerror = () => { cleanup(); resolve({ success: false, message: "Network Error" }); };
-                document.body.appendChild(script);
-                setTimeout(() => { cleanup(); resolve({ success: false, message: "Timeout" }); }, 30000);
-            });
+      <!-- DATA WARGA -->
+      <section id="page-datawarga" class="page">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-black">Data Warga</h2>
+          <button onclick="openForm()" class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2">
+            <span class="material-icons">add</span> Tambah
+          </button>
+        </div>
+        <div class="mb-6">
+          <input type="text" id="search-input" oninput="filterData()" placeholder="Cari warga..." class="w-full px-6 py-4 bg-white rounded-2xl border-none shadow-sm outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div id="warga-list" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+      </section>
+
+      <!-- KK -->
+      <section id="page-kk" class="page">
+        <h2 class="text-2xl font-black mb-6">Data Kepala Keluarga</h2>
+        <div id="kk-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL FORM -->
+  <div id="modal-form" class="modal">
+    <div class="bg-white w-full max-w-4xl rounded-[2.5rem] overflow-hidden max-h-[95vh] flex flex-col shadow-2xl">
+      <div class="px-8 py-6 border-b flex justify-between items-center">
+        <h3 id="form-title" class="text-xl font-black">Form Data Warga</h3>
+        <button onclick="closeModal('modal-form')" class="material-icons">close</button>
+      </div>
+      <form id="warga-form" class="p-8 overflow-y-auto space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-4">
+             <input type="number" name="NIK" placeholder="NIK" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100" required>
+             <input type="number" name="NO_KK" placeholder="Nomor KK" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100" required>
+             <input type="text" name="Nama" placeholder="Nama Lengkap" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100" required>
+             <select name="Kelamin" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100">
+               <option>Laki-Laki</option><option>Perempuan</option>
+             </select>
+          </div>
+          <div class="space-y-4">
+             <div class="grid grid-cols-3 gap-2">
+               <select name="Blok" id="form-blok" onchange="autoFillAlamat()" class="px-3 py-3 rounded-xl bg-slate-50 border border-slate-100">
+                 <option>A</option><option>B</option><option>C</option><option>D</option>
+               </select>
+               <input type="text" name="Nomer" id="form-nomer" oninput="autoFillAlamat()" placeholder="No" class="px-3 py-3 rounded-xl bg-slate-50 border border-slate-100">
+               <select name="RT" id="form-rt" onchange="autoFillAlamat()" class="px-3 py-3 rounded-xl bg-slate-50 border border-slate-100">
+                 <option>1</option><option>2</option><option>3</option><option>4</option>
+               </select>
+             </div>
+             <select name="Pekerjaan" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none">
+               <option value="Belum/Tidak Bekerja">Belum/Tidak Bekerja</option>
+               <option value="Mengurus Rumah Tangga">Mengurus Rumah Tangga</option>
+               <option value="Pelajar/Mahasiswa">Pelajar/Mahasiswa</option>
+               <option value="Pensiunan">Pensiunan</option>
+               <option value="PNS">PNS</option>
+               <option value="TNI">TNI</option>
+               <option value="POLRI">POLRI</option>
+               <option value="Karyawan Swasta">Karyawan Swasta</option>
+               <option value="Wiraswasta">Wiraswasta</option>
+               <option value="Petani">Petani</option>
+               <option value="Nelayan">Nelayan</option>
+             </select>
+             <select name="Status_Keluarga" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100">
+               <option>Kepala Keluarga</option><option>Istri</option><option>Anak</option><option>Orang Tua</option>
+             </select>
+             <textarea name="Alamat_KTP" id="form-alamatktp" placeholder="Alamat KTP" class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 h-20"></textarea>
+          </div>
+        </div>
+        <div class="flex flex-col gap-4">
+          <input type="file" id="photo-input" accept="image/*" class="text-sm">
+          <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg">SIMPAN DATA</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- LOADING OVERLAY -->
+  <div id="loading" class="fixed inset-0 bg-white/60 backdrop-blur-md z-[200] hidden flex-col items-center justify-center">
+    <div class="loader mb-4"></div>
+    <p class="text-xs font-black text-slate-400" id="loading-text">MEMPROSES...</p>
+    <button id="cancel-loading" onclick="showLoading(false)" class="mt-4 text-[10px] text-red-500 font-bold hidden underline">BATALKAN</button>
+  </div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbyQnIfaRQhv6r9jL_bJ3-uX9RhyUSAnUF4kt_lTCpgkHjWtXsCk4OWTBLPxB3JDz6L0qw/exec";
+    
+    let ALL_DATA = [];
+    let genderChart, rtChart;
+    let IS_DEMO_MODE = false;
+
+    /**
+     * FUNGSI KRUSIAL: Menjalankan backend menggunakan Fetch API dengan fallback Mode Demo.
+     */
+    async function runBackend(functionName, args = []) {
+      if (IS_DEMO_MODE) return getDemoData(functionName);
+
+      try {
+        const params = new URLSearchParams({
+          action: functionName,
+          args: JSON.stringify(args)
+        });
+
+        // Menggunakan Fetch API sebagai pengganti JSONP yang diblokir
+        const response = await fetch(`${API_URL}?${params.toString()}`, {
+          method: 'GET',
+          mode: 'cors', // Pastikan Apps Script mengizinkan CORS
+          cache: 'no-cache'
+        });
+
+        if (!response.ok) throw new Error("Respons Server Tidak Ok");
+        return await response.json();
+      } catch (err) {
+        console.error("Fetch Error:", err);
+        document.getElementById('api-error-box').classList.remove('hidden');
+        throw err;
+      }
+    }
+
+    function activateDemoMode() {
+      IS_DEMO_MODE = true;
+      document.getElementById('api-error-box').classList.add('hidden');
+      document.getElementById('badge-demo').classList.remove('hidden');
+      alert("Mode Demo Diaktifkan. Anda dapat mencoba aplikasi dengan data contoh.");
+    }
+
+    function getDemoData(action) {
+      if (action === 'checkLogin') return { success: true };
+      if (action === 'getAllWarga') return [
+        { NIK: "3201010101010001", Nama: "Rian Hidayat", RT: "01", Pekerjaan: "Karyawan", Status_Keluarga: "Kepala Keluarga", NO_KK: "KK001", Kelamin: "Laki-Laki" },
+        { NIK: "3201010101010002", Nama: "Lina Marlina", RT: "01", Pekerjaan: "IRT", Status_Keluarga: "Istri", NO_KK: "KK001", Kelamin: "Perempuan" },
+        { NIK: "3201010101010003", Nama: "Dadang Sudrajat", RT: "02", Pekerjaan: "Wiraswasta", Status_Keluarga: "Kepala Keluarga", NO_KK: "KK002", Kelamin: "Laki-Laki" }
+      ];
+      return { success: true };
+    }
+
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const loginError = document.getElementById('login-error');
+      loginError.classList.add('hidden');
+      
+      showLoading(true, "MENGHUBUNGKAN KE CLOUD...");
+
+      const user = document.getElementById('username').value;
+      const pass = document.getElementById('password').value;
+
+      try {
+        const res = await runBackend('checkLogin', [user, pass]);
+        if(res === true || (res && res.success)) {
+          enterApp();
+        } else {
+          loginError.innerText = "Kredensial salah.";
+          loginError.classList.remove('hidden');
+          showLoading(false);
         }
+      } catch (err) {
+        showLoading(false);
+        // Error sudah ditangani di runBackend (menampilkan error box)
+      }
+    });
 
-        function setLoading(show, text = "Memproses...") {
-            const l = document.getElementById('loader');
-            document.getElementById('loaderText').innerText = text;
-            l.classList.toggle('hidden', !show);
-        }
+    function enterApp() {
+      document.getElementById('login-page').style.display = 'none';
+      document.getElementById('main-app').classList.remove('hidden');
+      refreshData();
+    }
 
-        function initLoginForm() {
-            document.getElementById('loginForm').onsubmit = async (e) => {
-                e.preventDefault();
-                setLoading(true, "Verifikasi Akun...");
-                const u = document.getElementById('username').value;
-                const p = document.getElementById('password').value;
-                const res = await fetchAPI('login', { username: u, password: p });
-                if(res && res.success) {
-                    currentUser = res.user;
-                    document.getElementById('userName').innerText = currentUser.username;
-                    document.getElementById('userRole').innerText = currentUser.role;
-                    document.getElementById('loginPage').classList.add('hidden');
-                    document.getElementById('appPage').classList.remove('hidden');
-                    await refreshData();
-                    showPage('dashboard');
-                } else {
-                    alert(res.message || "Login Gagal");
-                }
-                setLoading(false);
-            };
-        }
+    async function refreshData() {
+      showLoading(true, "SINKRONISASI DATA...");
+      try {
+        const res = await runBackend('getAllWarga');
+        ALL_DATA = Array.isArray(res) ? res : (res && res.data ? res.data : []);
+        renderWarga();
+        renderKK();
+        updateCharts();
+      } catch (e) {
+        console.error("Refresh Error:", e);
+      }
+      showLoading(false);
+    }
 
-        async function refreshData() {
-            setLoading(true, "Menyinkronkan Data...");
-            const res = await fetchAPI('getAllData');
-            if(res && res.success) {
-                dataWarga = res.warga || [];
-                calculateStats();
-            }
-            setLoading(false);
-        }
+    function renderWarga(filter = null) {
+      const list = filter || ALL_DATA;
+      const container = document.getElementById('warga-list');
+      if (!list.length) {
+        container.innerHTML = '<div class="col-span-full text-center py-20 text-slate-400 font-medium italic">Data tidak ditemukan</div>';
+        return;
+      }
+      container.innerHTML = list.map(w => `
+        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer" onclick="openForm('${w.NIK}')">
+          <div class="flex justify-between items-start mb-2">
+            <h4 class="font-bold text-slate-800 leading-tight">${w.Nama || 'N/A'}</h4>
+            <span class="text-[10px] font-black text-slate-300">#${String(w.NIK || '0000').slice(-4)}</span>
+          </div>
+          <p class="text-[11px] text-slate-400 font-medium mb-4 italic">${w.NIK || '-'}</p>
+          <div class="flex flex-wrap gap-1">
+            <span class="px-2 py-1 bg-blue-50 text-[9px] font-black text-blue-600 rounded-lg">RT ${w.RT || '0'}</span>
+            <span class="px-2 py-1 bg-slate-50 text-[9px] font-black text-slate-500 rounded-lg uppercase">${w.Pekerjaan || 'UMUM'}</span>
+          </div>
+        </div>
+      `).join('');
+    }
 
-        function calculateStats() {
-            stats = {
-                total: dataWarga.length,
-                pria: dataWarga.filter(w => w.Kelamin == 'Laki-Laki').length,
-                wanita: dataWarga.filter(w => w.Kelamin == 'Perempuan').length,
-                rt: {},
-                tinggal: {}
-            };
-            dataWarga.forEach(w => {
-                stats.rt[w.RT] = (stats.rt[w.RT] || 0) + 1;
-                stats.tinggal[w.StatusTinggal] = (stats.tinggal[w.StatusTinggal] || 0) + 1;
-            });
-        }
+    function renderKK() {
+      const heads = ALL_DATA.filter(w => w.Status_Keluarga === 'Kepala Keluarga');
+      const container = document.getElementById('kk-list');
+      if (!heads.length) {
+        container.innerHTML = '<div class="col-span-full text-center py-20 text-slate-400">Data KK belum tersedia</div>';
+        return;
+      }
+      container.innerHTML = heads.map(h => {
+        const members = ALL_DATA.filter(w => w.NO_KK === h.NO_KK && w.NIK !== h.NIK);
+        return `
+          <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 font-black text-xs">KK</div>
+              <div>
+                <h3 class="font-black text-slate-800">${h.Nama}</h3>
+                <p class="text-[10px] text-slate-400 font-bold tracking-widest">NO. ${h.NO_KK || '-'}</p>
+              </div>
+            </div>
+            <div class="space-y-1">
+              ${members.length ? members.map(m => `
+                <div class="p-3 bg-slate-50 rounded-2xl text-[11px] font-bold flex justify-between items-center">
+                  <span class="text-slate-700">${m.Nama}</span>
+                  <span class="px-2 py-0.5 bg-white text-[9px] text-slate-400 rounded-md border border-slate-100 uppercase">${m.Status_Keluarga}</span>
+                </div>`).join('') : '<p class="text-[10px] text-slate-300 italic py-2">Satu anggota</p>'}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
 
-        function showPage(pageId) {
-            const container = document.getElementById('pageContainer');
-            document.getElementById('headerTitle').innerText = pageId;
-            document.querySelectorAll('.nav-item').forEach(el => {
-                if(el.dataset.page === pageId) el.classList.add('nav-active');
-                else el.classList.remove('nav-active');
-            });
+    async function updateCharts() {
+      const stats = { gender: { 'Laki-Laki': 0, 'Perempuan': 0 }, rt: {} };
+      ALL_DATA.forEach(w => { 
+        if(w.Kelamin && stats.gender.hasOwnProperty(w.Kelamin)) stats.gender[w.Kelamin]++;
+        if(w.RT) stats.rt[w.RT] = (stats.rt[w.RT] || 0) + 1; 
+      });
+      drawCharts(stats);
+    }
 
-            if(pageId === 'dashboard') renderDashboard();
-            else if(pageId === 'dataWarga') renderDataWarga();
-            else if(pageId === 'dataKK') renderDataKK();
-            else if(pageId === 'tambahData') renderFormWarga();
-            
-            lucide.createIcons();
-            window.scrollTo(0,0);
-        }
+    function drawCharts(stats) {
+      const config = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' } } } } };
+      if(genderChart) genderChart.destroy();
+      genderChart = new Chart(document.getElementById('chartGender'), {
+        type: 'doughnut',
+        data: { labels: Object.keys(stats.gender), datasets: [{ data: Object.values(stats.gender), backgroundColor: ['#3b82f6', '#ec4899'], borderWeight: 0, cutout: '70%' }] },
+        options: config
+      });
+      if(rtChart) rtChart.destroy();
+      rtChart = new Chart(document.getElementById('chartRT'), {
+        type: 'bar',
+        data: { labels: Object.keys(stats.rt).map(r => 'RT ' + r), datasets: [{ label: 'Warga', data: Object.values(stats.rt), backgroundColor: '#6366f1', borderRadius: 8 }] },
+        options: config
+      });
+    }
 
-        function renderDashboard() {
-            const latest = dataWarga.slice(-5).reverse();
-            document.getElementById('pageContainer').innerHTML = `
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <div class="bg-white p-6 rounded-3xl card-shadow">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Warga</p>
-                        <h3 class="text-3xl font-black text-indigo-600 mt-2">${stats.total}</h3>
-                    </div>
-                    <div class="bg-white p-6 rounded-3xl card-shadow">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-blue-400">Laki-Laki</p>
-                        <h3 class="text-3xl font-black text-blue-600 mt-2">${stats.pria}</h3>
-                    </div>
-                    <div class="bg-white p-6 rounded-3xl card-shadow">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-rose-400">Perempuan</p>
-                        <h3 class="text-3xl font-black text-rose-600 mt-2">${stats.wanita}</h3>
-                    </div>
-                    <div class="bg-white p-6 rounded-3xl card-shadow">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-emerald-400">RT Terpadat</p>
-                        <h3 class="text-3xl font-black text-emerald-600 mt-2">RT 0${Object.keys(stats.rt).sort((a,b)=>stats.rt[b]-stats.rt[a])[0] || '-'}</h3>
-                    </div>
-                </div>
+    function openForm(nik = null) {
+      const form = document.getElementById('warga-form');
+      form.reset();
+      document.getElementById('form-title').innerText = nik ? "Sunting Data Warga" : "Tambah Warga Baru";
+      if(nik) {
+        const w = ALL_DATA.find(x => x.NIK == nik);
+        if (w) { Object.keys(w).forEach(key => { const field = form.querySelector(`[name="${key}"]`); if(field) field.value = w[key]; }); }
+      }
+      document.getElementById('modal-form').classList.add('active');
+    }
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                    <div class="bg-white p-8 rounded-[2rem] card-shadow">
-                        <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i data-lucide="pie-chart" class="text-indigo-600"></i> Sebaran Status Tinggal</h3>
-                        <canvas id="tinggalChart" height="200"></canvas>
-                    </div>
-                    <div class="bg-white p-8 rounded-[2rem] card-shadow">
-                        <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i data-lucide="bar-chart-3" class="text-indigo-600"></i> Warga per RT</h3>
-                        <canvas id="rtChart" height="200"></canvas>
-                    </div>
-                </div>
+    function autoFillAlamat() {
+      const blok = document.getElementById('form-blok').value;
+      const no = document.getElementById('form-nomer').value;
+      const rt = document.getElementById('form-rt').value;
+      document.getElementById('form-alamatktp').value = `Blok ${blok}/${no} RT ${rt}`;
+    }
 
-                <div class="bg-white p-8 rounded-[2.5rem] card-shadow overflow-hidden">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-slate-800 uppercase tracking-widest text-sm">Data Terbaru</h3>
-                        <button onclick="showPage('dataWarga')" class="text-xs font-bold text-indigo-600 underline">Lihat Semua</button>
-                    </div>
-                    <div class="overflow-x-auto -mx-8">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                <tr>
-                                    <th class="px-8 py-4">Warga</th>
-                                    <th class="px-8 py-4">RT</th>
-                                    <th class="px-8 py-4 text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50">
-                                ${latest.map(w => `
-                                    <tr class="hover:bg-slate-50 transition-colors">
-                                        <td class="px-8 py-5">
-                                            <p class="font-bold text-slate-800">${w.Nama}</p>
-                                            <p class="text-[10px] font-medium text-slate-400">NIK: ${w.NIK}</p>
-                                        </td>
-                                        <td class="px-8 py-5">
-                                            <span class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full font-bold text-[10px]">RT 0${w.RT}</span>
-                                        </td>
-                                        <td class="px-8 py-5 text-right">
-                                            <button onclick="viewDetail('${w.NIK}')" class="p-2 text-indigo-400 hover:text-indigo-600"><i data-lucide="chevron-right"></i></button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-            initCharts();
-        }
+    document.getElementById('warga-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const formData = {};
+      new FormData(this).forEach((v, k) => formData[k] = v);
+      showLoading(true, "MENYIMPAN...");
+      try {
+        const res = await runBackend('saveWarga', [formData]);
+        if(res && res.success) { closeModal('modal-form'); refreshData(); }
+        else { alert("Gagal menyimpan."); showLoading(false); }
+      } catch (err) { showLoading(false); }
+    });
 
-        function initCharts() {
-            new Chart(document.getElementById('tinggalChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(stats.tinggal),
-                    datasets: [{
-                        data: Object.values(stats.tinggal),
-                        backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#6366f1']
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-            });
+    function filterData() {
+      const q = document.getElementById('search-input').value.toLowerCase();
+      const filtered = ALL_DATA.filter(w => (w.Nama && w.Nama.toLowerCase().includes(q)) || (w.NIK && String(w.NIK).includes(q)));
+      renderWarga(filtered);
+    }
 
-            new Chart(document.getElementById('rtChart'), {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(stats.rt).map(k => 'RT 0' + k),
-                    datasets: [{
-                        label: 'Jumlah Warga',
-                        data: Object.values(stats.rt),
-                        backgroundColor: '#4f46e5',
-                        borderRadius: 12
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-            });
-        }
+    function navigate(p) {
+      document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+      document.getElementById('page-' + p).classList.add('active');
+    }
 
-        function renderDataWarga() {
-            document.getElementById('pageContainer').innerHTML = `
-                <div class="flex flex-col gap-6">
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <div class="flex-1 relative">
-                            <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size="18"></i>
-                            <input type="text" id="searchInput" oninput="filterData()" placeholder="Cari Nama / NIK / No KK..." class="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl outline-none card-shadow">
-                        </div>
-                        <select id="rtFilter" onchange="filterData()" class="px-6 py-4 bg-white border border-slate-200 rounded-2xl outline-none font-bold text-slate-600 card-shadow">
-                            <option value="">Semua RT</option>
-                            <option value="1">RT 01</option>
-                            <option value="2">RT 02</option>
-                            <option value="3">RT 03</option>
-                            <option value="4">RT 04</option>
-                        </select>
-                    </div>
-                    <div id="wargaList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-                </div>
-            `;
-            filterData();
-        }
-
-        function filterData() {
-            const s = document.getElementById('searchInput').value.toLowerCase();
-            const rt = document.getElementById('rtFilter').value;
-            const filtered = dataWarga.filter(w => {
-                const matchSearch = w.Nama.toLowerCase().includes(s) || String(w.NIK).includes(s) || String(w.NOKK).includes(s);
-                const matchRT = rt === "" || w.RT == rt;
-                return matchSearch && matchRT;
-            });
-            renderWargaCards(filtered);
-        }
-
-        function renderWargaCards(data) {
-            const list = document.getElementById('wargaList');
-            if(data.length === 0) {
-                list.innerHTML = `<div class="col-span-full p-20 text-center text-slate-400 font-bold uppercase tracking-widest">Tidak ada data</div>`;
-                return;
-            }
-            list.innerHTML = data.map(w => `
-                <div onclick="viewDetail('${w.NIK}')" class="bg-white p-6 rounded-[2rem] card-shadow border border-slate-50 cursor-pointer hover:border-indigo-200 transition-all group">
-                    <div class="flex items-start gap-4">
-                        <div class="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 flex-shrink-0">
-                            <img src="${w.Foto || 'https://ui-avatars.com/api/?name='+w.Nama}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/100'">
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <h4 class="font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">${w.Nama}</h4>
-                            <p class="text-[10px] font-bold text-slate-400 mt-0.5">NIK: ${w.NIK}</p>
-                            <div class="flex flex-wrap gap-2 mt-3">
-                                <span class="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[9px] font-black uppercase tracking-tight">RT 0${w.RT}</span>
-                                <span class="px-2 py-0.5 bg-slate-50 text-slate-500 rounded-md text-[9px] font-black uppercase tracking-tight">${w.StatusKeluarga}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between text-xs text-slate-400">
-                        <span class="flex items-center gap-1"><i data-lucide="map-pin" size="12"></i> ${w.Blok}/${w.Nomer}</span>
-                        <span class="flex items-center gap-1 font-bold text-indigo-500">${w.NoHP || '-'}</span>
-                    </div>
-                </div>
-            `).join('');
-            lucide.createIcons();
-        }
-
-        function viewDetail(nik) {
-            const w = dataWarga.find(x => x.NIK == nik);
-            const modal = document.getElementById('modalContainer');
-            const body = document.getElementById('modalBody');
-            document.getElementById('modalTitle').innerText = "PROFIL WARGA";
-            
-            body.innerHTML = `
-                <div class="flex flex-col items-center text-center mb-10">
-                    <div class="w-32 h-32 rounded-[2.5rem] overflow-hidden border-4 border-slate-100 shadow-xl mb-6">
-                        <img src="${w.Foto || 'https://ui-avatars.com/api/?name='+w.Nama}" class="w-full h-full object-cover">
-                    </div>
-                    <h2 class="text-2xl font-black text-slate-800">${w.Nama}</h2>
-                    <p class="text-indigo-600 font-bold tracking-widest uppercase text-[10px] mt-2">${w.StatusKeluarga}</p>
-                </div>
-
-                <div class="space-y-6">
-                    <div class="grid grid-cols-2 gap-6">
-                        <div class="bg-slate-50 p-4 rounded-2xl">
-                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">NIK</p>
-                            <p class="font-bold text-slate-700 mt-1">${w.NIK}</p>
-                        </div>
-                        <div class="bg-slate-50 p-4 rounded-2xl">
-                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">NO KK</p>
-                            <p class="font-bold text-slate-700 mt-1">${w.NOKK}</p>
-                        </div>
-                    </div>
-
-                    <div class="bg-slate-50 p-6 rounded-2xl">
-                        <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Informasi Pribadi</h4>
-                        <div class="grid grid-cols-2 gap-y-4 text-sm">
-                            <div><p class="text-slate-400 text-xs">Kelamin</p><p class="font-bold">${w.Kelamin}</p></div>
-                            <div><p class="text-slate-400 text-xs">Agama</p><p class="font-bold">${w.Agama}</p></div>
-                            <div><p class="text-slate-400 text-xs">Tgl Lahir</p><p class="font-bold">${w.TempatLahir}, ${w.TanggalLahir}</p></div>
-                            <div><p class="text-slate-400 text-xs">Status Kawin</p><p class="font-bold">${w.StatusPerkawinan}</p></div>
-                        </div>
-                    </div>
-
-                    <div class="bg-slate-50 p-6 rounded-2xl">
-                        <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Tempat Tinggal</h4>
-                        <p class="text-slate-400 text-xs">Alamat Tinggal</p>
-                        <p class="font-bold text-slate-700 mb-4">${w.AlamatTinggal}</p>
-                        <p class="text-slate-400 text-xs">Alamat KTP</p>
-                        <p class="font-bold text-slate-700">${w.AlamatKTP}</p>
-                    </div>
-                    
-                    ${currentUser.role !== 'viewer' ? `
-                    <div class="flex gap-4 pt-6">
-                        <button onclick="editData('${w.NIK}')" class="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2"><i data-lucide="edit-3" size="18"></i> Edit Data</button>
-                        <button onclick="deleteWarga('${w.NIK}')" class="bg-rose-50 text-rose-600 px-6 rounded-2xl font-bold"><i data-lucide="trash-2"></i></button>
-                    </div>
-                    ` : ''}
-                </div>
-            `;
-            
-            modal.classList.remove('hidden');
-            lucide.createIcons();
-        }
-
-        function renderFormWarga(existingData = null) {
-            const container = document.getElementById('pageContainer');
-            const isEdit = !!existingData;
-            
-            container.innerHTML = `
-                <div class="max-w-3xl mx-auto bg-white p-10 rounded-[2.5rem] card-shadow">
-                    <div class="mb-10 flex justify-between items-center">
-                        <h2 class="text-2xl font-black text-slate-800">${isEdit ? 'EDIT DATA WARGA' : 'TAMBAH WARGA BARU'}</h2>
-                        <i data-lucide="${isEdit ? 'edit' : 'user-plus'}" class="text-indigo-600" size="32"></i>
-                    </div>
-                    
-                    <form id="wargaForm" class="space-y-8">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">NIK (16 Digit)</label>
-                                <input name="NIK" required maxlength="16" value="${existingData?.NIK || ''}" class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all">
-                            </div>
-                            <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">NO KK</label>
-                                <input name="NOKK" required maxlength="16" value="${existingData?.NOKK || ''}" class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Lengkap</label>
-                                <input name="Nama" required value="${existingData?.Nama || ''}" class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all">
-                            </div>
-                            
-                            <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Jenis Kelamin</label>
-                                <select name="Kelamin" required class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold">
-                                    <option value="Laki-Laki" ${existingData?.Kelamin=='Laki-Laki'?'selected':''}>Laki-Laki</option>
-                                    <option value="Perempuan" ${existingData?.Kelamin=='Perempuan'?'selected':''}>Perempuan</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Agama</label>
-                                <select name="Agama" required class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold">
-                                    <option value="Islam" ${existingData?.Agama=='Islam'?'selected':''}>Islam</option>
-                                    <option value="Kristen" ${existingData?.Agama=='Kristen'?'selected':''}>Kristen</option>
-                                    <option value="Katolik" ${existingData?.Agama=='Katolik'?'selected':''}>Katolik</option>
-                                    <option value="Buddha" ${existingData?.Agama=='Buddha'?'selected':''}>Buddha</option>
-                                    <option value="Hindu" ${existingData?.Agama=='Hindu'?'selected':''}>Hindu</option>
-                                    <option value="Konghucu" ${existingData?.Agama=='Konghucu'?'selected':''}>Konghucu</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Tempat Lahir</label>
-                                <input name="TempatLahir" required value="${existingData?.TempatLahir || ''}" class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all">
-                            </div>
-                            <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Tanggal Lahir</label>
-                                <input type="date" name="TanggalLahir" required value="${existingData?.TanggalLahir || ''}" class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all">
-                            </div>
-
-                            <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Status Kawin</label>
-                                <select name="StatusPerkawinan" class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold">
-                                    <option value="Belum Kawin" ${existingData?.StatusPerkawinan=='Belum Kawin'?'selected':''}>Belum Kawin</option>
-                                    <option value="Kawin" ${existingData?.StatusPerkawinan=='Kawin'?'selected':''}>Kawin</option>
-                                    <option value="Cerai Hidup" ${existingData?.StatusPerkawinan=='Cerai Hidup'?'selected':''}>Cerai Hidup</option>
-                                    <option value="Cerai Mati" ${existingData?.StatusPerkawinan=='Cerai Mati'?'selected':''}>Cerai Mati</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Status Tinggal</label>
-                                <select name="StatusTinggal" class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold">
-                                    <option value="Tetap" ${existingData?.StatusTinggal=='Tetap'?'selected':''}>Tetap</option>
-                                    <option value="Kontrak" ${existingData?.StatusTinggal=='Kontrak'?'selected':''}>Kontrak</option>
-                                    <option value="Kos" ${existingData?.StatusTinggal=='Kos'?'selected':''}>Kos</option>
-                                    <option value="Lainnya" ${existingData?.StatusTinggal=='Lainnya'?'selected':''}>Lainnya</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Blok</label>
-                                <select id="formBlok" name="Blok" class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold">
-                                    <option value="A" ${existingData?.Blok=='A'?'selected':''}>Blok A</option>
-                                    <option value="B" ${existingData?.Blok=='B'?'selected':''}>Blok B</option>
-                                    <option value="C" ${existingData?.Blok=='C'?'selected':''}>Blok C</option>
-                                    <option value="D" ${existingData?.Blok=='D'?'selected':''}>Blok D</option>
-                                </select>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">No</label>
-                                    <input id="formNomer" name="Nomer" required value="${existingData?.Nomer || ''}" class="w-full px-4 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all">
-                                </div>
-                                <div>
-                                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">RT</label>
-                                    <select id="formRT" name="RT" class="w-full px-4 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold">
-                                        <option value="1" ${existingData?.RT==1?'selected':''}>1</option>
-                                        <option value="2" ${existingData?.RT==2?'selected':''}>2</option>
-                                        <option value="3" ${existingData?.RT==3?'selected':''}>3</option>
-                                        <option value="4" ${existingData?.RT==4?'selected':''}>4</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">Alamat KTP <button type="button" onclick="syncAddress()" class="text-indigo-600 underline text-[9px] font-bold">SAMA DENGAN TINGGAL</button></label>
-                            <textarea id="formAlamatKTP" name="AlamatKTP" required class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all min-h-[100px]">${existingData?.AlamatKTP || ''}</textarea>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Hubungan Keluarga</label>
-                                <select name="StatusKeluarga" required class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold">
-                                    <option value="Kepala Keluarga" ${existingData?.StatusKeluarga=='Kepala Keluarga'?'selected':''}>Kepala Keluarga</option>
-                                    <option value="Istri" ${existingData?.StatusKeluarga=='Istri'?'selected':''}>Istri</option>
-                                    <option value="Anak" ${existingData?.StatusKeluarga=='Anak'?'selected':''}>Anak</option>
-                                    <option value="Orang Tua" ${existingData?.StatusKeluarga=='Orang Tua'?'selected':''}>Orang Tua</option>
-                                    <option value="Lainnya" ${existingData?.StatusKeluarga=='Lainnya'?'selected':''}>Lainnya</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">No HP</label>
-                                <input name="NoHP" value="${existingData?.NoHP || ''}" class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all">
-                            </div>
-                            <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Pekerjaan</label>
-                                <select name="Pekerjaan" class="w-full px-5 py-4 mt-2 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold">
-                                    <option value="Karyawan Swasta" ${existingData?.Pekerjaan=='Karyawan Swasta'?'selected':''}>Karyawan Swasta</option>
-                                    <option value="Wiraswasta" ${existingData?.Pekerjaan=='Wiraswasta'?'selected':''}>Wiraswasta</option>
-                                    <option value="IRT" ${existingData?.Pekerjaan=='IRT'?'selected':''}>Ibu Rumah Tangga</option>
-                                    <option value="Pelajar" ${existingData?.Pekerjaan=='Pelajar'?'selected':''}>Pelajar/Mahasiswa</option>
-                                    <option value="PNS" ${existingData?.Pekerjaan=='PNS'?'selected':''}>PNS/TNI/POLRI</option>
-                                    <option value="Lainnya" ${existingData?.Pekerjaan=='Lainnya'?'selected':''}>Lainnya</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Upload Foto</label>
-                                <input type="file" id="fotoInput" accept="image/*" class="w-full px-5 py-3.5 mt-2 bg-indigo-50 border border-indigo-100 rounded-2xl text-xs font-bold text-indigo-600 cursor-pointer">
-                            </div>
-                        </div>
-
-                        <button type="submit" class="w-full bg-indigo-600 text-white py-5 rounded-[1.5rem] font-bold shadow-2xl shadow-indigo-200 flex items-center justify-center gap-3 active:scale-95 transition-all">
-                            <i data-lucide="save"></i> ${isEdit ? 'SIMPAN PERUBAHAN' : 'DAFTARKAN WARGA'}
-                        </button>
-                    </form>
-                </div>
-            `;
-
-            lucide.createIcons();
-            initWargaFormSubmit(isEdit, existingData?.Foto);
-        }
-
-        function syncAddress() {
-            const b = document.getElementById('formBlok').value;
-            const n = document.getElementById('formNomer').value;
-            const rt = document.getElementById('formRT').value;
-            document.getElementById('formAlamatKTP').value = `Puri Agung 2 Blok ${b}/${n} RT 0${rt}`;
-        }
-
-        function initWargaFormSubmit(isEdit, oldFotoUrl) {
-            document.getElementById('wargaForm').onsubmit = async (e) => {
-                e.preventDefault();
-                setLoading(true, "Memproses Data...");
-                const fd = new FormData(e.target);
-                const obj = Object.fromEntries(fd.entries());
-                
-                // Convert file to Base64
-                const fileEl = document.getElementById('fotoInput');
-                if(fileEl.files[0]) {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(fileEl.files[0]);
-                    reader.onload = async () => {
-                        obj.FotoBase64 = reader.result;
-                        await sendSaveRequest(obj);
-                    };
-                } else {
-                    obj.FotoUrl = oldFotoUrl || "";
-                    await sendSaveRequest(obj);
-                }
-            };
-        }
-
-        async function sendSaveRequest(payload) {
-            const res = await fetchAPI('saveWarga', { payload: JSON.stringify(payload) });
-            if(res && res.success) {
-                alert("Berhasil!");
-                closeModal();
-                await refreshData();
-                showPage('dataWarga');
-            } else {
-                alert("Gagal: " + res.message);
-            }
-            setLoading(false);
-        }
-
-        function renderDataKK() {
-            const kks = dataWarga.filter(w => w.StatusKeluarga == 'Kepala Keluarga');
-            document.getElementById('pageContainer').innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    ${kks.map(kk => {
-                        const members = dataWarga.filter(w => w.NOKK == kk.NOKK && w.NIK != kk.NIK);
-                        return `
-                            <div class="bg-white p-8 rounded-[2.5rem] card-shadow border border-slate-50 flex flex-col group cursor-pointer" onclick="viewKKDetail('${kk.NOKK}')">
-                                <div class="flex items-center gap-4 mb-6">
-                                    <div class="w-16 h-16 rounded-[1.5rem] bg-indigo-50 flex items-center justify-center text-indigo-600">
-                                        <i data-lucide="book" size="32"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-black text-slate-800 text-lg group-hover:text-indigo-600 transition-colors uppercase">${kk.Nama}</h4>
-                                        <p class="text-xs font-bold text-slate-400">NO KK: ${kk.NOKK}</p>
-                                    </div>
-                                </div>
-                                <div class="bg-slate-50 rounded-2xl p-4 flex-1">
-                                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Anggota Keluarga (${members.length})</p>
-                                    <div class="flex flex-wrap gap-2">
-                                        ${members.length > 0 ? members.map(m => `<span class="px-3 py-1 bg-white text-slate-700 text-[10px] font-bold rounded-lg border border-slate-100">${m.Nama}</span>`).join('') : '<span class="text-xs italic text-slate-300">Belum ada anggota terdaftar</span>'}
-                                    </div>
-                                </div>
-                                <div class="mt-6 flex justify-between items-center text-[10px] font-black text-indigo-600 uppercase tracking-widest">
-                                    <span>${kk.AlamatTinggal}</span>
-                                    <i data-lucide="chevron-right"></i>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-            lucide.createIcons();
-        }
-
-        function viewKKDetail(noKK) {
-            const members = dataWarga.filter(w => w.NOKK == noKK);
-            const head = members.find(m => m.StatusKeluarga == 'Kepala Keluarga');
-            const modal = document.getElementById('modalContainer');
-            const body = document.getElementById('modalBody');
-            
-            document.getElementById('modalTitle').innerText = "KARTU KELUARGA";
-            body.innerHTML = `
-                <div class="bg-indigo-50 p-6 rounded-3xl mb-8 border border-indigo-100">
-                    <h3 class="font-black text-indigo-600 text-lg uppercase">${head?.Nama || 'NO NAME'}</h3>
-                    <p class="text-xs font-bold text-indigo-400 mt-1">NOMOR KARTU KELUARGA: ${noKK}</p>
-                    <div class="mt-4 flex gap-4 text-[10px] font-bold text-slate-500 uppercase">
-                        <span><i data-lucide="map-pin" class="inline" size="12"></i> RT 0${head?.RT || '-'}</span>
-                        <span><i data-lucide="home" class="inline" size="12"></i> BLOK ${head?.Blok}/${head?.Nomer}</span>
-                    </div>
-                </div>
-                
-                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">DAFTAR ANGGOTA</h4>
-                <div class="space-y-4">
-                    ${members.map(m => `
-                        <div onclick="viewDetail('${m.NIK}')" class="bg-white border border-slate-100 p-4 rounded-2xl flex items-center justify-between cursor-pointer hover:border-indigo-200 transition-all">
-                            <div class="flex items-center gap-4">
-                                <div class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                                    <i data-lucide="user" size="18"></i>
-                                </div>
-                                <div>
-                                    <p class="font-bold text-slate-800 text-sm">${m.Nama}</p>
-                                    <p class="text-[9px] font-bold text-indigo-500 uppercase tracking-tighter">${m.StatusKeluarga}</p>
-                                </div>
-                            </div>
-                            <i data-lucide="chevron-right" size="16" class="text-slate-300"></i>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-            modal.classList.remove('hidden');
-            lucide.createIcons();
-        }
-
-        function editData(nik) {
-            const w = dataWarga.find(x => x.NIK == nik);
-            closeModal();
-            renderFormWarga(w);
-        }
-
-        async function deleteWarga(nik) {
-            if(!confirm("Yakin ingin menghapus data ini?")) return;
-            setLoading(true, "Menghapus...");
-            const res = await fetchAPI('deleteWarga', { nik: nik });
-            if(res && res.success) {
-                closeModal();
-                await refreshData();
-                showPage('dataWarga');
-            } else {
-                alert("Gagal menghapus");
-            }
-            setLoading(false);
-        }
-
-        function closeModal() {
-            document.getElementById('modalContainer').classList.add('hidden');
-        }
-
-        function logout() {
-            if(confirm("Keluar dari aplikasi?")) location.reload();
-        }
-    </script>
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    function showLoading(s, text = "MEMPROSES...") { 
+      const el = document.getElementById('loading');
+      el.style.display = s ? 'flex' : 'none'; 
+      document.getElementById('loading-text').innerText = text;
+    }
+    function logout() { location.reload(); }
+  </script>
 </body>
 </html>
