@@ -166,7 +166,12 @@
           
           <div class="md:col-span-2">
             <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Alamat KTP</label><div class="flex items-center gap-1 cursor-pointer" onclick="syncAlamat()"><input type="checkbox" id="sync-check" class="rounded"> <span class="text-[9px] font-bold text-blue-600">Sama dengan alamat tinggal</span></div></div>
-            <textarea id="f-alamat" class="w-full bg-slate-50 p-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-500 h-20"></textarea>
+            <textarea id="f-alamat-ktp" class="w-full bg-slate-50 p-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-500 h-20"></textarea>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="text-[10px] font-bold text-slate-400 uppercase">Alamat Tinggal</label>
+            <textarea id="f-alamat-tinggal" class="w-full bg-slate-50 p-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-500 h-20"></textarea>
           </div>
           
           <!-- LAINNYA -->
@@ -373,7 +378,8 @@
           document.getElementById('f-blok').value = clean(getVal(w, "Blok"));
           document.getElementById('f-nomer').value = clean(getVal(w, "Nomer"));
           document.getElementById('f-rt').value = clean(getVal(w, "RT"));
-          document.getElementById('f-alamat').value = clean(getVal(w, "Alamat"));
+          document.getElementById('f-alamat-ktp').value = clean(getVal(w, "Alamat KTP"));
+          document.getElementById('f-alamat-tinggal').value = clean(getVal(w, "Alamat Tinggal"));
           document.getElementById('f-status-kel').value = clean(getVal(w, "Status Keluarga"));
           document.getElementById('f-hp').value = clean(getVal(w, "No HP"));
           document.getElementById('f-pekerjaan').value = clean(getVal(w, "Pekerjaan"));
@@ -391,7 +397,9 @@
     function syncAlamat() {
       const blok = document.getElementById('f-blok').value;
       const nomer = document.getElementById('f-nomer').value;
-      document.getElementById('f-alamat').value = `Blok ${blok} No. ${nomer}`;
+      const val = `Blok ${blok} No. ${nomer}`;
+      document.getElementById('f-alamat-ktp').value = val;
+      document.getElementById('f-alamat-tinggal').value = val;
     }
 
     document.getElementById('entry-form').addEventListener('submit', async (e) => {
@@ -418,7 +426,8 @@
         blok: document.getElementById('f-blok').value,
         nomer: document.getElementById('f-nomer').value,
         rt: document.getElementById('f-rt').value,
-        alamat: document.getElementById('f-alamat').value,
+        alamatKTP: document.getElementById('f-alamat-ktp').value,
+        alamatTinggal: document.getElementById('f-alamat-tinggal').value,
         statusKel: document.getElementById('f-status-kel').value,
         hp: document.getElementById('f-hp').value,
         pekerjaan: document.getElementById('f-pekerjaan').value,
@@ -459,7 +468,13 @@
         <div class="grid grid-cols-2 gap-3 text-xs">
           <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] uppercase">NIK</p><p class="font-bold font-mono">${clean(getVal(w, "NIK"))}</p></div>
           <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] uppercase">No KK</p><p class="font-bold font-mono">${clean(getVal(w, "KK"))}</p></div>
-          <div class="bg-slate-50 p-4 rounded-2xl col-span-2"><p class="text-slate-400 font-bold text-[8px] uppercase">Alamat</p><p class="font-bold">${clean(getVal(w, "Alamat"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] uppercase">Jenis Kelamin</p><p class="font-bold">${clean(getVal(w, "Kelamin"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] uppercase">Agama</p><p class="font-bold">${clean(getVal(w, "Agama"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] uppercase">RT</p><p class="font-bold">${clean(getVal(w, "RT"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] uppercase">No HP</p><p class="font-bold">${clean(getVal(w, "No HP"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl col-span-2"><p class="text-slate-400 font-bold text-[8px] uppercase">Pekerjaan</p><p class="font-bold">${clean(getVal(w, "Pekerjaan"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl col-span-2"><p class="text-slate-400 font-bold text-[8px] uppercase">Alamat KTP</p><p class="font-bold text-slate-600">${clean(getVal(w, "Alamat KTP"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl col-span-2"><p class="text-slate-400 font-bold text-[8px] uppercase">Alamat Tinggal</p><p class="font-bold text-slate-600">${clean(getVal(w, "Alamat Tinggal"))}</p></div>
         </div>
       `;
       document.getElementById('modal-detail').classList.add('active');
