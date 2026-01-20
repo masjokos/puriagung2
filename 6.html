@@ -160,12 +160,19 @@
           <div><label class="text-[10px] font-bold text-slate-400 uppercase">Status Tinggal</label><select id="f-tinggal" class="w-full bg-slate-50 p-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-500"><option>Tetap</option><option>Kontrak</option><option>Kos</option><option>Lainnya</option></select></div>
           
           <!-- LOKASI -->
-          <div><label class="text-[10px] font-bold text-slate-400 uppercase">Blok</label><select id="f-blok" class="w-full bg-slate-50 p-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-500"><option>A</option><option>B</option><option>B1</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option></select></div>
-          <div><label class="text-[10px] font-bold text-slate-400 uppercase">Nomer</label><input type="text" id="f-nomer" class="w-full bg-slate-50 p-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-500"></div>
+          <div><label class="text-[10px] font-bold text-slate-400 uppercase">Blok</label><select id="f-blok" onchange="syncAlamat()" class="w-full bg-slate-50 p-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-500"><option>A</option><option>B</option><option>B1</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option></select></div>
+          <div><label class="text-[10px] font-bold text-slate-400 uppercase">Nomer</label><input type="text" id="f-nomer" oninput="syncAlamat()" class="w-full bg-slate-50 p-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-500"></div>
           <div><label class="text-[10px] font-bold text-slate-400 uppercase">RT</label><select id="f-rt" class="w-full bg-slate-50 p-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-500"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
           
+          <!-- ALAMAT KTP DENGAN FITUR SINKRONISASI -->
           <div class="md:col-span-2">
-            <label class="text-[10px] font-bold text-slate-400 uppercase">Alamat KTP</label>
+            <div class="flex justify-between items-center mb-1">
+                <label class="text-[10px] font-bold text-slate-400 uppercase">Alamat KTP</label>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="f-sama-alamat" onchange="syncAlamat()" class="w-3 h-3 text-blue-600 rounded focus:ring-blue-500">
+                    <label for="f-sama-alamat" class="text-[10px] font-medium text-blue-600">Sama dengan alamat tinggal</label>
+                </div>
+            </div>
             <textarea id="f-alamat-ktp" class="w-full bg-slate-50 p-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-500 h-20"></textarea>
           </div>
           
@@ -210,28 +217,40 @@
     };
 
     /**
-     * FUNGSI PANGGIL API TERPADU
+     * FUNGSI SINKRONISASI ALAMAT KTP
      */
+    function syncAlamat() {
+        const checkbox = document.getElementById('f-sama-alamat');
+        const alamatKtp = document.getElementById('f-alamat-ktp');
+        const blok = document.getElementById('f-blok').value;
+        const nomer = document.getElementById('f-nomer').value;
+
+        if (checkbox.checked) {
+            alamatKtp.value = `Blok ${blok} No. ${nomer}`;
+            alamatKtp.readOnly = true;
+            alamatKtp.classList.add('opacity-70');
+        } else {
+            alamatKtp.readOnly = false;
+            alamatKtp.classList.remove('opacity-70');
+        }
+    }
+
     async function callAPI(action, args = []) {
       const isWrite = action === 'saveWarga';
-      
       try {
         const options = {
           method: isWrite ? 'POST' : 'GET',
           mode: 'cors',
           headers: isWrite ? { 'Content-Type': 'text/plain;charset=utf-8' } : {}
         };
-
         let url = API_URL;
         if (isWrite) {
           options.body = JSON.stringify({ action, args });
         } else {
           url += `?action=${action}&args=${encodeURIComponent(JSON.stringify(args))}`;
         }
-
         const response = await fetch(url, options);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
         const text = await response.text();
         return JSON.parse(text);
       } catch (e) {
@@ -349,10 +368,15 @@
       }).join('');
     }
 
-    // FORM LOGIC
     function openForm(nik = null) {
       const form = document.getElementById('entry-form');
       form.reset();
+      
+      // Reset status checkbox dan readonly pada alamat KTP
+      document.getElementById('f-sama-alamat').checked = false;
+      document.getElementById('f-alamat-ktp').readOnly = false;
+      document.getElementById('f-alamat-ktp').classList.remove('opacity-70');
+      
       document.getElementById('f-original-nik').value = nik || "";
       document.getElementById('form-title').innerText = nik ? "Edit Data Warga" : "Tambah Data Warga";
       
@@ -395,7 +419,6 @@
         base64Foto = await toBase64(fileInput.files[0]);
       }
 
-      // Gabungkan Blok dan Nomer untuk Alamat Tinggal
       const blokVal = document.getElementById('f-blok').value;
       const nomerVal = document.getElementById('f-nomer').value;
       const alamatTinggalOtomatis = `Blok ${blokVal} No. ${nomerVal}`;
