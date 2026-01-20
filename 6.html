@@ -165,13 +165,8 @@
           <div><label class="text-[10px] font-bold text-slate-400 uppercase">RT</label><select id="f-rt" class="w-full bg-slate-50 p-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-500"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
           
           <div class="md:col-span-2">
-            <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Alamat KTP</label><div class="flex items-center gap-1 cursor-pointer" onclick="syncAlamat()"><input type="checkbox" id="sync-check" class="rounded"> <span class="text-[9px] font-bold text-blue-600">Sama dengan alamat tinggal</span></div></div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase">Alamat KTP</label>
             <textarea id="f-alamat-ktp" class="w-full bg-slate-50 p-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-500 h-20"></textarea>
-          </div>
-
-          <div class="md:col-span-2">
-            <label class="text-[10px] font-bold text-slate-400 uppercase">Alamat Tinggal</label>
-            <textarea id="f-alamat-tinggal" class="w-full bg-slate-50 p-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-blue-500 h-20"></textarea>
           </div>
           
           <!-- LAINNYA -->
@@ -216,7 +211,6 @@
 
     /**
      * FUNGSI PANGGIL API TERPADU
-     * Menggunakan metode POST untuk pengiriman data (save) dan GET untuk pengambilan data (getAll/login)
      */
     async function callAPI(action, args = []) {
       const isWrite = action === 'saveWarga';
@@ -230,10 +224,8 @@
 
         let url = API_URL;
         if (isWrite) {
-          // Kirim data via body jika POST
           options.body = JSON.stringify({ action, args });
         } else {
-          // Kirim data via URL jika GET
           url += `?action=${action}&args=${encodeURIComponent(JSON.stringify(args))}`;
         }
 
@@ -244,7 +236,7 @@
         return JSON.parse(text);
       } catch (e) {
         console.error("API Call Error:", e);
-        return { success: false, error: "Gagal terhubung ke server. Pastikan Web App Script sudah di-deploy dengan doPost dan doGet." };
+        return { success: false, error: "Gagal terhubung ke server." };
       }
     }
 
@@ -379,7 +371,6 @@
           document.getElementById('f-nomer').value = clean(getVal(w, "Nomer"));
           document.getElementById('f-rt').value = clean(getVal(w, "RT"));
           document.getElementById('f-alamat-ktp').value = clean(getVal(w, "Alamat KTP"));
-          document.getElementById('f-alamat-tinggal').value = clean(getVal(w, "Alamat Tinggal"));
           document.getElementById('f-status-kel').value = clean(getVal(w, "Status Keluarga"));
           document.getElementById('f-hp').value = clean(getVal(w, "No HP"));
           document.getElementById('f-pekerjaan').value = clean(getVal(w, "Pekerjaan"));
@@ -394,14 +385,6 @@
       document.getElementById('modal-form').classList.add('active');
     }
 
-    function syncAlamat() {
-      const blok = document.getElementById('f-blok').value;
-      const nomer = document.getElementById('f-nomer').value;
-      const val = `Blok ${blok} No. ${nomer}`;
-      document.getElementById('f-alamat-ktp').value = val;
-      document.getElementById('f-alamat-tinggal').value = val;
-    }
-
     document.getElementById('entry-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       toggleLoading(true, "Menyimpan...");
@@ -411,6 +394,11 @@
       if(fileInput.files[0]) {
         base64Foto = await toBase64(fileInput.files[0]);
       }
+
+      // Gabungkan Blok dan Nomer untuk Alamat Tinggal
+      const blokVal = document.getElementById('f-blok').value;
+      const nomerVal = document.getElementById('f-nomer').value;
+      const alamatTinggalOtomatis = `Blok ${blokVal} No. ${nomerVal}`;
 
       const payload = {
         originalNik: document.getElementById('f-original-nik').value,
@@ -423,11 +411,11 @@
         tanggal: document.getElementById('f-tanggal').value,
         perkawinan: document.getElementById('f-perkawinan').value,
         tinggal: document.getElementById('f-tinggal').value,
-        blok: document.getElementById('f-blok').value,
-        nomer: document.getElementById('f-nomer').value,
+        blok: blokVal,
+        nomer: nomerVal,
         rt: document.getElementById('f-rt').value,
         alamatKTP: document.getElementById('f-alamat-ktp').value,
-        alamatTinggal: document.getElementById('f-alamat-tinggal').value,
+        alamatTinggal: alamatTinggalOtomatis,
         statusKel: document.getElementById('f-status-kel').value,
         hp: document.getElementById('f-hp').value,
         pekerjaan: document.getElementById('f-pekerjaan').value,
