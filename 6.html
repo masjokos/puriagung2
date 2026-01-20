@@ -17,6 +17,8 @@
     .modal.active { display: flex; }
     .nav-item.active { color: #2563eb; border-top: 2px solid #2563eb; }
     input, select, textarea { font-size: 14px !important; }
+    .loader { border-top-color: #2563eb; animation: spinner 1.5s linear infinite; }
+    @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body class="bg-slate-50">
@@ -184,7 +186,7 @@
   <div id="loading" class="fixed inset-0 bg-white/95 z-[200] hidden flex flex-col items-center justify-center">
     <div class="relative w-16 h-16 mb-4">
       <div class="absolute inset-0 rounded-full border-4 border-slate-100"></div>
-      <div class="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
+      <div class="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent loader"></div>
     </div>
     <p id="loading-text" class="text-xs font-bold text-slate-500 tracking-widest uppercase animate-pulse">Sinkronisasi Data...</p>
   </div>
@@ -195,6 +197,7 @@
     let rtChart;
 
     const getVal = (obj, pattern) => {
+      if (!obj) return "";
       const keys = Object.keys(obj);
       const normPattern = pattern.toLowerCase().replace(/[^a-z0-9]/g, '');
       const match = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '').includes(normPattern));
@@ -206,14 +209,37 @@
       return String(val).trim();
     };
 
+    /**
+     * FUNGSI PANGGIL API TERPADU
+     * Menggunakan metode POST untuk pengiriman data (save) dan GET untuk pengambilan data (getAll/login)
+     */
     async function callAPI(action, args = []) {
+      const isWrite = action === 'saveWarga';
+      
       try {
-        const url = `${API_URL}?action=${action}&args=${encodeURIComponent(JSON.stringify(args))}`;
-        const res = await fetch(url);
-        return await res.json();
+        const options = {
+          method: isWrite ? 'POST' : 'GET',
+          mode: 'cors',
+          headers: isWrite ? { 'Content-Type': 'text/plain;charset=utf-8' } : {}
+        };
+
+        let url = API_URL;
+        if (isWrite) {
+          // Kirim data via body jika POST
+          options.body = JSON.stringify({ action, args });
+        } else {
+          // Kirim data via URL jika GET
+          url += `?action=${action}&args=${encodeURIComponent(JSON.stringify(args))}`;
+        }
+
+        const response = await fetch(url, options);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const text = await response.text();
+        return JSON.parse(text);
       } catch (e) {
-        console.error("API Error:", e);
-        return { success: false, error: e.message };
+        console.error("API Call Error:", e);
+        return { success: false, error: "Gagal terhubung ke server. Pastikan Web App Script sudah di-deploy dengan doPost dan doGet." };
       }
     }
 
@@ -229,12 +255,14 @@
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('main-app').classList.remove('hidden');
         await refreshData();
-      } else { alert("Login Gagal!"); }
+      } else { 
+        alert(res.error || "Login Gagal!"); 
+      }
       toggleLoading(false);
     });
 
     async function refreshData() {
-      toggleLoading(true, "Memuat Data Warga...");
+      toggleLoading(true, "Memuat Data...");
       const data = await callAPI('getAllWarga');
       if (Array.isArray(data)) {
         ALL_DATA = data;
@@ -244,11 +272,7 @@
     }
 
     function updateUI() {
-      const listKK = ALL_DATA.filter(w => {
-        const status = clean(getVal(w, "Status Keluarga")).toLowerCase();
-        return status.includes("kepala");
-      });
-
+      const listKK = ALL_DATA.filter(w => clean(getVal(w, "Status Keluarga")).toLowerCase().includes("kepala"));
       document.getElementById('stat-total').innerText = ALL_DATA.length;
       document.getElementById('stat-kk').innerText = listKK.length;
       document.getElementById('kk-count').innerText = listKK.length + " KK";
@@ -290,7 +314,7 @@
       document.getElementById('warga-list').innerHTML = list.map(w => `
         <div class="bg-white p-5 rounded-3xl border border-slate-100 flex items-center gap-4 hover:border-blue-200 transition-all cursor-pointer" onclick="showDetail('${getVal(w, "NIK")}')">
           <div class="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 overflow-hidden">
-            ${getVal(w, "Foto").startsWith('http') ? `<img src="${getVal(w, "Foto")}" class="w-full h-full object-cover">` : `<span class="material-icons text-slate-200 text-3xl">account_circle</span>`}
+            ${getVal(w, "Foto") && getVal(w, "Foto").startsWith('http') ? `<img src="${getVal(w, "Foto")}" class="w-full h-full object-cover">` : `<span class="material-icons text-slate-200 text-3xl">account_circle</span>`}
           </div>
           <div class="flex-1 overflow-hidden">
             <p class="font-bold text-slate-800 truncate">${getVal(w, "Nama")}</p>
@@ -354,13 +378,10 @@
           document.getElementById('f-hp').value = clean(getVal(w, "No HP"));
           document.getElementById('f-pekerjaan').value = clean(getVal(w, "Pekerjaan"));
           
-          // Tanggal format
           const rawDate = getVal(w, "Tanggal Lahir");
           if(rawDate) {
-              try { 
-                const d = new Date(rawDate);
-                document.getElementById('f-tanggal').value = d.toISOString().split('T')[0];
-              } catch(e) {}
+              const d = new Date(rawDate);
+              if(!isNaN(d.getTime())) document.getElementById('f-tanggal').value = d.toISOString().split('T')[0];
           }
         }
       }
@@ -368,17 +389,14 @@
     }
 
     function syncAlamat() {
-      const isChecked = document.getElementById('sync-check').checked;
-      if(isChecked) {
-        const blok = document.getElementById('f-blok').value;
-        const nomer = document.getElementById('f-nomer').value;
-        document.getElementById('f-alamat').value = `Blok ${blok} No. ${nomer}`;
-      }
+      const blok = document.getElementById('f-blok').value;
+      const nomer = document.getElementById('f-nomer').value;
+      document.getElementById('f-alamat').value = `Blok ${blok} No. ${nomer}`;
     }
 
     document.getElementById('entry-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      toggleLoading(true, "Menyimpan Data...");
+      toggleLoading(true, "Menyimpan...");
       
       const fileInput = document.getElementById('f-foto');
       let base64Foto = "";
@@ -408,11 +426,13 @@
       };
 
       const res = await callAPI('saveWarga', [payload]);
-      if(res.success) {
-        alert("Berhasil disimpan!");
+      if(res && res.success) {
+        alert("Berhasil!");
         closeModal('form');
         await refreshData();
-      } else { alert("Gagal menyimpan: " + res.error); }
+      } else { 
+        alert("Gagal simpan: " + (res.error || "Cek koneksi")); 
+      }
       toggleLoading(false);
     });
 
@@ -426,39 +446,25 @@
     function showDetail(nik) {
       const w = ALL_DATA.find(x => clean(getVal(x, "NIK")) == clean(nik));
       if(!w) return;
-      
-      // Update Button Edit
-      document.getElementById('btn-edit-trigger').onclick = () => {
-          closeModal('detail');
-          openForm(nik);
-      };
-
+      document.getElementById('btn-edit-trigger').onclick = () => { closeModal('detail'); openForm(nik); };
+      const fotoUrl = getVal(w, "Foto");
       document.getElementById('detail-body').innerHTML = `
         <div class="flex flex-col items-center mb-6">
-          <div class="w-32 h-32 bg-slate-100 rounded-[2.5rem] overflow-hidden mb-4 shadow-xl border border-slate-100">
-             ${getVal(w, "Foto").startsWith('http') ? `<img src="${getVal(w, "Foto")}" class="w-full h-full object-cover">` : `<span class="material-icons text-7xl text-slate-200 mt-6">account_circle</span>`}
+          <div class="w-32 h-32 bg-slate-100 rounded-[2.5rem] overflow-hidden mb-4 shadow-xl border flex items-center justify-center">
+             ${fotoUrl && fotoUrl.startsWith('http') ? `<img src="${fotoUrl}" class="w-full h-full object-cover">` : `<span class="material-icons text-7xl text-slate-200">account_circle</span>`}
           </div>
           <h4 class="font-black text-2xl text-slate-800 text-center leading-tight mb-2">${getVal(w, "Nama")}</h4>
-          <span class="bg-blue-600 text-white px-5 py-1.5 rounded-2xl text-[10px] font-bold uppercase tracking-widest">${clean(getVal(w, "Status Keluarga"))}</span>
+          <span class="bg-blue-600 text-white px-5 py-1.5 rounded-2xl text-[10px] font-bold uppercase">${clean(getVal(w, "Status Keluarga"))}</span>
         </div>
         <div class="grid grid-cols-2 gap-3 text-xs">
-          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase tracking-tighter">NIK</p><p class="font-bold font-mono">${clean(getVal(w, "NIK"))}</p></div>
-          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase tracking-tighter">No KK</p><p class="font-bold font-mono">${clean(getVal(w, "KK"))}</p></div>
-          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase tracking-tighter">TTL</p><p class="font-bold">${clean(getVal(w, "Tempat Lahir"))}, ${clean(getVal(w, "Tanggal Lahir"))}</p></div>
-          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase tracking-tighter">Jenis Kelamin</p><p class="font-bold">${clean(getVal(w, "Kelamin"))}</p></div>
-          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase tracking-tighter">Agama</p><p class="font-bold">${clean(getVal(w, "Agama"))}</p></div>
-          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase tracking-tighter">Pekerjaan</p><p class="font-bold">${clean(getVal(w, "Pekerjaan"))}</p></div>
-          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase tracking-tighter">Status Nikah</p><p class="font-bold">${clean(getVal(w, "Status Perkawinan"))}</p></div>
-          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase tracking-tighter">Status Tinggal</p><p class="font-bold">${clean(getVal(w, "Status Tinggal"))}</p></div>
-          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase tracking-tighter">RT / Blok</p><p class="font-bold">RT ${clean(getVal(w, "RT"))} • Blok ${clean(getVal(w, "Blok"))} No. ${clean(getVal(w, "Nomer"))}</p></div>
-          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase tracking-tighter">No HP</p><p class="font-bold">${clean(getVal(w, "No HP"))}</p></div>
-          <div class="bg-slate-50 p-4 rounded-2xl col-span-2"><p class="text-slate-400 font-bold text-[8px] mb-1 uppercase tracking-tighter">Alamat KTP</p><p class="font-bold">${clean(getVal(w, "Alamat"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] uppercase">NIK</p><p class="font-bold font-mono">${clean(getVal(w, "NIK"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl"><p class="text-slate-400 font-bold text-[8px] uppercase">No KK</p><p class="font-bold font-mono">${clean(getVal(w, "KK"))}</p></div>
+          <div class="bg-slate-50 p-4 rounded-2xl col-span-2"><p class="text-slate-400 font-bold text-[8px] uppercase">Alamat</p><p class="font-bold">${clean(getVal(w, "Alamat"))}</p></div>
         </div>
       `;
       document.getElementById('modal-detail').classList.add('active');
     }
 
-    // UTILS
     function renderChart(rtData) {
       const labels = Object.keys(rtData).sort();
       const vals = labels.map(l => rtData[l]);
@@ -466,15 +472,14 @@
       const ctx = document.getElementById('chartRT').getContext('2d');
       rtChart = new Chart(ctx, {
         type: 'bar',
-        data: { labels: labels.map(l => 'RT '+l), datasets: [{ data: vals, backgroundColor: '#2563eb', borderRadius: 8, barThickness: 16 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        data: { labels: labels.map(l => 'RT '+l), datasets: [{ data: vals, backgroundColor: '#2563eb', borderRadius: 8 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
       });
     }
 
     function doSearch() {
       const q = document.getElementById('search').value.toLowerCase();
-      const filtered = ALL_DATA.filter(w => getVal(w, "Nama").toLowerCase().includes(q) || getVal(w, "NIK").toString().includes(q));
-      renderWarga(filtered);
+      renderWarga(ALL_DATA.filter(w => getVal(w, "Nama").toLowerCase().includes(q) || getVal(w, "NIK").toString().includes(q)));
     }
 
     function navigate(p) {
@@ -484,7 +489,7 @@
 
     function logout() { location.reload(); }
     function closeModal(id) { document.getElementById('modal-'+id).classList.remove('active'); }
-    function toggleLoading(s, txt = "Sinkronisasi Data...") { 
+    function toggleLoading(s, txt) { 
         document.getElementById('loading-text').innerText = txt;
         document.getElementById('loading').classList.toggle('hidden', !s); 
     }
