@@ -8,398 +8,275 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
     body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-    .page { display: none; padding-bottom: 120px; }
+    .page { display: none; padding-bottom: 100px; }
     .page.active { display: block; animation: fadeIn 0.3s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .modal { display: none; position: fixed; z-index: 50; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 1rem; }
+    .modal { display: none; position: fixed; z-index: 50; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 1rem; }
     .modal.active { display: flex; }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #f1f1f1; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-    
-    /* Bottom Navigation Styles */
-    .nav-item.active { color: #2563eb; }
-    .nav-item.active .material-icons { transform: translateY(-4px); transition: transform 0.2s ease; }
+    .nav-item.active { color: #2563eb; border-top: 2px solid #2563eb; }
   </style>
 </head>
 <body class="bg-slate-50">
 
-  <!-- LOGIN PAGE -->
+  <!-- LOGIN -->
   <div id="login-page" class="fixed inset-0 bg-white z-[100] flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 border border-slate-100 text-center">
-      <div class="bg-blue-600 text-white w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6">
-        <span class="material-icons text-5xl">location_city</span>
+    <div class="w-full max-w-md text-center">
+      <div class="bg-blue-600 text-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-200">
+        <span class="material-icons text-4xl">domain</span>
       </div>
-      <h2 class="text-3xl font-black text-slate-800">E-Warga</h2>
-      <p class="text-slate-500 mt-2 mb-8">Silakan masuk untuk akses data</p>
-      <form id="login-form" class="space-y-4 text-left">
-        <input type="text" id="username" placeholder="Username" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500" required>
-        <input type="password" id="password" placeholder="Password" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500" required>
-        <div id="api-error-box" class="hidden p-4 bg-amber-50 border border-amber-200 rounded-2xl text-left mb-4">
-          <p class="text-amber-700 text-xs font-bold flex items-center gap-2">
-            <span class="material-icons text-sm">warning</span> Masalah Koneksi API
-          </p>
-          <button type="button" onclick="activateDemoMode()" class="mt-2 w-full py-2 bg-amber-500 text-white text-[10px] font-black rounded-lg">MASUK MODE DEMO (OFFLINE)</button>
-        </div>
-        <button type="submit" id="login-btn" class="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition-colors">Masuk</button>
+      <h2 class="text-2xl font-extrabold text-slate-800">E-Warga</h2>
+      <p class="text-slate-500 mb-8">Masuk ke sistem manajemen warga</p>
+      <form id="login-form" class="space-y-3 text-left">
+        <input type="text" id="username" placeholder="Username" class="w-full px-5 py-4 rounded-xl bg-slate-100 border-none focus:ring-2 focus:ring-blue-500 outline-none" required>
+        <input type="password" id="password" placeholder="Password" class="w-full px-5 py-4 rounded-xl bg-slate-100 border-none focus:ring-2 focus:ring-blue-500 outline-none" required>
+        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg mt-4 hover:bg-blue-700 transition-all">MASUK</button>
       </form>
     </div>
   </div>
 
   <!-- MAIN APP -->
   <div id="main-app" class="hidden min-h-screen">
-    <!-- Header tetap di atas untuk Desktop & Mobile -->
-    <header class="bg-white border-b sticky top-0 z-40 px-6 py-4 flex justify-between items-center shadow-sm">
-      <div class="flex items-center gap-2">
-        <span class="material-icons text-blue-600">analytics</span>
-        <h1 class="font-bold text-slate-800 tracking-tight">E-WARGA</h1>
-      </div>
-      <!-- Desktop Navigation -->
-      <nav class="hidden md:flex gap-4">
-        <button onclick="navigate('dashboard')" class="nav-btn-d font-bold text-slate-600 hover:text-blue-600 px-3 py-1">Dashboard</button>
-        <button onclick="navigate('datawarga')" class="nav-btn-d font-bold text-slate-600 hover:text-blue-600 px-3 py-1">Warga</button>
-        <button onclick="navigate('kk')" class="nav-btn-d font-bold text-slate-600 hover:text-blue-600 px-3 py-1">Keluarga</button>
-        <button onclick="logout()" class="text-red-500 font-bold px-3 py-1">Logout</button>
-      </nav>
-      <div class="md:hidden">
-        <button onclick="logout()" class="text-red-500"><span class="material-icons">logout</span></button>
-      </div>
+    <header class="bg-white border-b px-6 py-4 sticky top-0 z-40 flex justify-between items-center">
+      <span class="font-black text-blue-600 tracking-tighter text-xl">E-WARGA</span>
+      <button onclick="logout()" class="text-red-500"><span class="material-icons">logout</span></button>
     </header>
 
-    <main class="max-w-7xl mx-auto p-4 md:p-8">
+    <main class="max-w-5xl mx-auto p-4 md:p-8">
       <!-- DASHBOARD -->
       <section id="page-dashboard" class="page active">
-        <h2 class="text-2xl font-black mb-6">Ringkasan Data</h2>
-        
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
-            <p class="text-slate-400 text-[10px] font-black uppercase mb-1">Total Warga</p>
-            <h3 id="stat-total-warga" class="text-3xl font-black text-slate-800">0</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Total Warga</p>
+            <h3 id="stat-total" class="text-2xl font-black">0</h3>
           </div>
-          <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
-            <p class="text-slate-400 text-[10px] font-black uppercase mb-1">Kepala Keluarga</p>
-            <h3 id="stat-total-kk" class="text-3xl font-black text-blue-600">0</h3>
+          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Kepala Keluarga</p>
+            <h3 id="stat-kk" class="text-2xl font-black text-blue-600">0</h3>
           </div>
-          <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
-            <p class="text-slate-400 text-[10px] font-black uppercase mb-1">Laki-Laki</p>
-            <h3 id="stat-pria" class="text-3xl font-black text-slate-800">0</h3>
+          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Laki-Laki</p>
+            <h3 id="stat-pria" class="text-2xl font-black">0</h3>
           </div>
-          <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
-            <p class="text-slate-400 text-[10px] font-black uppercase mb-1">Perempuan</p>
-            <h3 id="stat-wanita" class="text-3xl font-black text-slate-800">0</h3>
+          <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Perempuan</p>
+            <h3 id="stat-wanita" class="text-2xl font-black">0</h3>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div class="bg-white p-6 rounded-3xl border border-slate-100 h-80"><canvas id="chartGender"></canvas></div>
-          <div class="bg-white p-6 rounded-3xl border border-slate-100 lg:col-span-2 h-80"><canvas id="chartRT"></canvas></div>
+        <div class="bg-white p-6 rounded-3xl border border-slate-100 mb-6 h-64">
+           <canvas id="chartRT"></canvas>
         </div>
 
-        <!-- 5 Warga Terbaru -->
-        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <div class="flex justify-between items-center mb-6">
-            <h3 class="font-black text-slate-800 uppercase tracking-wider text-sm">5 Warga Terbaru</h3>
-            <button onclick="navigate('datawarga')" class="text-blue-600 text-xs font-bold">Lihat Semua</button>
-          </div>
-          <div id="recent-warga-list" class="space-y-4">
-             <!-- Konten diisi via JS -->
-          </div>
-        </div>
+        <h3 class="font-bold text-slate-800 mb-4">Warga Terbaru</h3>
+        <div id="recent-list" class="space-y-2"></div>
       </section>
 
       <!-- DATA WARGA -->
-      <section id="page-datawarga" class="page">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-black">Data Warga</h2>
-          <button onclick="alert('Fitur tambah segera hadir')" class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2">
-            <span class="material-icons">person_add</span> Tambah
-          </button>
+      <section id="page-warga" class="page">
+        <div class="mb-4 relative">
+          <input type="text" id="search" oninput="doSearch()" placeholder="Cari Nama/NIK..." class="w-full pl-12 pr-4 py-4 bg-white rounded-2xl border-none shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          <span class="material-icons absolute left-4 top-4 text-slate-400">search</span>
         </div>
-        <div class="mb-6 relative">
-          <span class="material-icons absolute left-5 top-4 text-slate-400">search</span>
-          <input type="text" id="search-input" oninput="filterData()" placeholder="Cari Nama atau NIK..." class="w-full pl-14 pr-6 py-4 bg-white rounded-2xl shadow-sm outline-none border border-transparent focus:border-blue-500 transition-all">
-        </div>
-        <div id="warga-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        <div id="warga-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
       </section>
 
       <!-- DATA KK -->
       <section id="page-kk" class="page">
-        <h2 class="text-2xl font-black mb-6">Data Kepala Keluarga</h2>
-        <div id="kk-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+        <h2 class="text-xl font-black mb-4">Daftar Kepala Keluarga</h2>
+        <div id="kk-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
       </section>
     </main>
 
-    <!-- Mobile Bottom Navigation -->
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-6 py-3 flex justify-between items-center z-50 rounded-t-[2rem] shadow-[0_-10px_25px_rgba(0,0,0,0.05)]">
-      <button onclick="navigate('dashboard')" id="nav-dashboard" class="nav-item active flex flex-col items-center gap-1 text-slate-400 transition-all">
-        <span class="material-icons text-2xl">dashboard</span>
-        <span class="text-[10px] font-bold">Home</span>
+    <!-- NAVIGATION -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-3 z-50">
+      <button onclick="navigate('dashboard')" id="nav-dashboard" class="nav-item active flex flex-col items-center gap-1">
+        <span class="material-icons">dashboard</span><span class="text-[10px] font-bold">Home</span>
       </button>
-      <button onclick="navigate('datawarga')" id="nav-datawarga" class="nav-item flex flex-col items-center gap-1 text-slate-400 transition-all">
-        <span class="material-icons text-2xl">people</span>
-        <span class="text-[10px] font-bold">Warga</span>
+      <button onclick="navigate('warga')" id="nav-warga" class="nav-item flex flex-col items-center gap-1">
+        <span class="material-icons">people</span><span class="text-[10px] font-bold">Warga</span>
       </button>
-      <button onclick="navigate('kk')" id="nav-kk" class="nav-item flex flex-col items-center gap-1 text-slate-400 transition-all">
-        <span class="material-icons text-2xl">groups</span>
-        <span class="text-[10px] font-bold">Keluarga</span>
+      <button onclick="navigate('kk')" id="nav-kk" class="nav-item flex flex-col items-center gap-1">
+        <span class="material-icons">groups</span><span class="text-[10px] font-bold">Keluarga</span>
       </button>
     </nav>
   </div>
 
   <!-- DETAIL MODAL -->
   <div id="modal-detail" class="modal">
-    <div class="bg-white w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl">
-      <div class="px-8 py-6 border-b flex justify-between items-center bg-slate-50">
-        <h3 class="text-xl font-black text-slate-800">Detail Warga</h3>
-        <button onclick="closeModal('modal-detail')"><span class="material-icons">close</span></button>
+    <div class="bg-white w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl">
+      <div class="p-6 border-b flex justify-between items-center">
+        <h3 class="font-black text-slate-800">Detail Informasi</h3>
+        <button onclick="closeModal()"><span class="material-icons">close</span></button>
       </div>
-      <div id="detail-content" class="p-8 space-y-6 max-h-[70vh] overflow-y-auto"></div>
-      <div class="p-8 pt-0 flex gap-4">
-        <button id="btn-edit-from-detail" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg uppercase tracking-wider">Sunting Data</button>
-      </div>
+      <div id="detail-body" class="p-6 space-y-4 max-h-[70vh] overflow-y-auto"></div>
     </div>
   </div>
 
-  <!-- LOADING -->
-  <div id="loading" class="fixed inset-0 bg-white/60 backdrop-blur-md z-[200] hidden flex-col items-center justify-center">
-    <div class="loader mb-4"></div>
-    <p class="text-[10px] font-black text-slate-400 tracking-[0.2em]" id="loading-text">MEMPROSES...</p>
+  <div id="loading" class="fixed inset-0 bg-white/80 z-[200] hidden flex flex-col items-center justify-center">
+    <div class="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-600 mb-2"></div>
+    <p class="text-xs font-bold text-slate-500">MEMUAT DATA...</p>
   </div>
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbyQnIfaRQhv6r9jL_bJ3-uX9RhyUSAnUF4kt_lTCpgkHjWtXsCk4OWTBLPxB3JDz6L0qw/exec";
     let ALL_DATA = [];
-    let genderChart, rtChart;
-    let IS_DEMO_MODE = false;
+    let rtChart;
 
-    const safeStr = (val) => (val === undefined || val === null ? '-' : String(val).trim());
+    const clean = (val) => (val === undefined || val === null || val === "" || val === "-") ? "-" : String(val).trim();
 
-    async function runBackend(functionName, args = []) {
-      if (IS_DEMO_MODE) return getDemoData(functionName);
-      try {
-        const params = new URLSearchParams({ action: functionName, args: JSON.stringify(args) });
-        const response = await fetch(`${API_URL}?${params.toString()}`, { method: 'GET', redirect: 'follow' });
-        return await response.json();
-      } catch (err) {
-        document.getElementById('api-error-box').classList.remove('hidden');
-        throw err;
-      }
+    async function callAPI(action, args = []) {
+      const url = `${API_URL}?action=${action}&args=${encodeURIComponent(JSON.stringify(args))}`;
+      const res = await fetch(url);
+      return await res.json();
     }
-
-    function getDemoData(action) {
-      if (action === 'getAllWarga') return [
-        ["320101", "320101", "Asep Sunandar", "Laki-Laki", "Islam", "Bandung", "1985-05-10", "Kawin", "Tetap", "A", "01", "1", "Jl. Melati", "Jl. Melati", "Kepala Keluarga", "08123", "PNS", ""],
-        ["320102", "320101", "Siti Aminah", "Perempuan", "Islam", "Bandung", "1988-08-15", "Kawin", "Tetap", "A", "01", "1", "Jl. Melati", "Jl. Melati", "Istri", "08124", "IRT", ""],
-        ["320103", "320202", "Budi Doremi", "Laki-Laki", "Islam", "Jakarta", "1990-01-01", "Belum Kawin", "Kontrak", "B", "12", "2", "Jl. Mawar", "Jl. Mawar", "Kepala Keluarga", "08125", "Swasta", ""],
-        ["320104", "320303", "Citra Kirana", "Perempuan", "Islam", "Bogor", "1995-12-12", "Kawin", "Tetap", "C", "05", "3", "Jl. Anggrek", "Jl. Anggrek", "Kepala Keluarga", "08126", "Wiraswasta", ""],
-        ["320105", "320101", "Dedi Kusnandar", "Laki-Laki", "Islam", "Bandung", "2010-02-20", "Belum Kawin", "Tetap", "A", "01", "1", "Jl. Melati", "Jl. Melati", "Anak", "08127", "Pelajar", ""]
-      ];
-      return { success: true };
-    }
-
-    function activateDemoMode() { IS_DEMO_MODE = true; enterApp(); }
 
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      showLoading(true, "MENGOTORISASI...");
-      try {
-        const res = await runBackend('checkLogin', [document.getElementById('username').value, document.getElementById('password').value]);
-        if(res === true || res.success) enterApp();
-        else { alert("Login Gagal"); showLoading(false); }
-      } catch (err) { showLoading(false); }
+      toggleLoading(true);
+      const res = await callAPI('checkLogin', [document.getElementById('username').value, document.getElementById('password').value]);
+      if(res.success) {
+        document.getElementById('login-page').style.display = 'none';
+        document.getElementById('main-app').classList.remove('hidden');
+        await refreshData();
+      } else {
+        alert("Login Gagal!");
+      }
+      toggleLoading(false);
     });
 
-    function enterApp() {
-      document.getElementById('login-page').style.display = 'none';
-      document.getElementById('main-app').classList.remove('hidden');
-      refreshData();
-    }
-
     async function refreshData() {
-      showLoading(true, "MENGAMBIL DATA...");
-      try {
-        const res = await runBackend('getAllWarga');
-        ALL_DATA = (Array.isArray(res) ? res : (res.data || [])).map(item => {
-          if(Array.isArray(item)) {
-            return {
-              NIK: safeStr(item[0]), NO_KK: safeStr(item[1]), Nama: safeStr(item[2]),
-              Kelamin: safeStr(item[3]), Agama: safeStr(item[4]), Tempat_Lahir: safeStr(item[5]),
-              Tanggal_Lahir: safeStr(item[6]), Status_Perkawinan: safeStr(item[7]),
-              Status_Tinggal: safeStr(item[8]), Blok: safeStr(item[9]), Nomer: safeStr(item[10]),
-              RT: safeStr(item[11]), Alamat_KTP: safeStr(item[12]), Alamat_Tinggal: safeStr(item[13]),
-              Status_Keluarga: safeStr(item[14]), NO_HP: safeStr(item[15]), Pekerjaan: safeStr(item[16]),
-              Foto: safeStr(item[17])
-            };
-          }
-          return {
-            NIK: safeStr(item.NIK), NO_KK: safeStr(item.NO_KK), Nama: safeStr(item.Nama),
-            Kelamin: safeStr(item.Kelamin), Agama: safeStr(item.Agama), Tempat_Lahir: safeStr(item.Tempat_Lahir),
-            Tanggal_Lahir: safeStr(item.Tanggal_Lahir), Status_Perkawinan: safeStr(item.Status_Perkawinan),
-            Status_Tinggal: safeStr(item.Status_Tinggal), Blok: safeStr(item.Blok), Nomer: safeStr(item.Nomer),
-            RT: safeStr(item.RT), Alamat_KTP: safeStr(item.Alamat_KTP), Status_Keluarga: safeStr(item.Status_Keluarga),
-            NO_HP: safeStr(item.NO_HP), Pekerjaan: safeStr(item.Pekerjaan), Foto: safeStr(item.Foto)
-          };
-        });
-        updateDashboard();
-        renderWarga();
-        renderKK();
-        renderRecentWarga();
-      } catch (e) { console.error(e); }
-      showLoading(false);
+      toggleLoading(true);
+      const data = await callAPI('getAllWarga');
+      // Karena backend Code.gs Anda mengirimkan Array of Object, kita langsung pakai.
+      ALL_DATA = data;
+      console.log("Data Received:", ALL_DATA); 
+      updateUI();
+      toggleLoading(false);
     }
 
-    function updateDashboard() {
-      const kepalaKeluarga = ALL_DATA.filter(w => w.Status_Keluarga.toLowerCase() === 'kepala keluarga');
-      const stats = { 
-        total: ALL_DATA.length, 
-        kk: kepalaKeluarga.length,
-        gender: { 'Laki-Laki': 0, 'Perempuan': 0 }, 
-        rt: { '1': 0, '2': 0, '3': 0, '4': 0 } 
+    function updateUI() {
+      // Statistik
+      const stats = {
+        total: ALL_DATA.length,
+        kk: ALL_DATA.filter(w => String(w["Status Hubungan Keluarga"]).toLowerCase().includes("kepala keluarga")).length,
+        pria: ALL_DATA.filter(w => w.Kelamin === "Laki-Laki").length,
+        wanita: ALL_DATA.filter(w => w.Kelamin === "Perempuan").length,
+        rt: {}
       };
-      
-      ALL_DATA.forEach(w => { 
-        if(stats.gender.hasOwnProperty(w.Kelamin)) stats.gender[w.Kelamin]++;
-        if(w.RT) stats.rt[w.RT] = (stats.rt[w.RT] || 0) + 1; 
-      });
 
-      document.getElementById('stat-total-warga').innerText = stats.total;
-      document.getElementById('stat-total-kk').innerText = stats.kk;
-      document.getElementById('stat-pria').innerText = stats.gender['Laki-Laki'];
-      document.getElementById('stat-wanita').innerText = stats.gender['Perempuan'];
+      document.getElementById('stat-total').innerText = stats.total;
+      document.getElementById('stat-kk').innerText = stats.kk;
+      document.getElementById('stat-pria').innerText = stats.pria;
+      document.getElementById('stat-wanita').innerText = stats.wanita;
 
-      drawCharts(stats);
+      // Chart RT
+      ALL_DATA.forEach(w => { if(w.RT) stats.rt[w.RT] = (stats.rt[w.RT] || 0) + 1; });
+      renderChart(stats.rt);
+
+      // Render Lists
+      renderRecent();
+      renderWarga();
+      renderKK();
     }
 
-    function renderRecentWarga() {
-      // Ambil 5 data terakhir dari array (asumsi data baru di bawah)
+    function renderRecent() {
       const recent = [...ALL_DATA].reverse().slice(0, 5);
-      const container = document.getElementById('recent-warga-list');
-      container.innerHTML = recent.map(w => `
-        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors cursor-pointer" onclick="openDetail('${w.NIK}')">
+      document.getElementById('recent-list').innerHTML = recent.map(w => `
+        <div class="bg-white p-4 rounded-2xl flex justify-between items-center border border-slate-50" onclick="showDetail('${w.NIK}')">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 border border-slate-100">
-              <span class="material-icons text-sm">person</span>
-            </div>
-            <div>
-              <p class="text-xs font-black text-slate-800">${w.Nama}</p>
-              <p class="text-[9px] text-slate-400 font-bold uppercase">RT 0${w.RT} • ${w.Status_Keluarga}</p>
-            </div>
+            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600"><span class="material-icons">person</span></div>
+            <div><p class="text-sm font-bold">${w.Nama}</p><p class="text-[10px] text-slate-400 uppercase">RT ${w.RT} • ${w["Status Hubungan Keluarga"]}</p></div>
           </div>
-          <span class="material-icons text-slate-300 text-sm">chevron_right</span>
+          <span class="material-icons text-slate-300">chevron_right</span>
         </div>
       `).join('');
     }
 
-    function renderWarga(filter = null) {
-      const list = filter || ALL_DATA;
-      const container = document.getElementById('warga-list');
-      container.innerHTML = list.map(w => `
-        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md cursor-pointer" onclick="openDetail('${w.NIK}')">
-          <div class="flex items-center gap-4">
-             <div class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center overflow-hidden">
-                ${w.Foto && w.Foto !== '-' ? `<img src="${w.Foto}" class="w-full h-full object-cover">` : `<span class="material-icons text-slate-300">person</span>`}
-             </div>
-             <div>
-                <h4 class="font-bold text-slate-800">${w.Nama}</h4>
-                <p class="text-[10px] text-slate-400 font-mono">${w.NIK}</p>
-             </div>
+    function renderWarga(data = null) {
+      const list = data || ALL_DATA;
+      document.getElementById('warga-list').innerHTML = list.map(w => `
+        <div class="bg-white p-5 rounded-3xl border border-slate-100 flex items-center gap-4" onclick="showDetail('${w.NIK}')">
+          <div class="w-12 h-12 bg-slate-100 rounded-2xl overflow-hidden flex items-center justify-center">
+            ${w.Foto && w.Foto !== '-' ? `<img src="${w.Foto}" class="w-full h-full object-cover">` : `<span class="material-icons text-slate-300">person</span>`}
           </div>
-          <div class="mt-4 pt-4 border-t flex justify-between">
-            <span class="text-[10px] font-black text-slate-300 uppercase">Status</span>
-            <span class="text-[10px] font-bold text-blue-500 uppercase">${w.Status_Keluarga}</span>
+          <div class="flex-1">
+            <p class="font-bold text-slate-800">${w.Nama}</p>
+            <p class="text-[10px] text-slate-400 font-mono">${w.NIK}</p>
           </div>
+          <div class="text-right"><p class="text-[10px] font-black text-blue-500 uppercase">RT ${w.RT}</p></div>
         </div>
       `).join('');
     }
 
     function renderKK() {
-      const heads = ALL_DATA.filter(w => w.Status_Keluarga.toLowerCase() === 'kepala keluarga');
-      const container = document.getElementById('kk-list');
-      if (!heads.length) { container.innerHTML = '<div class="col-span-full text-center py-10 text-slate-400">Belum ada data Kepala Keluarga</div>'; return; }
-      
-      container.innerHTML = heads.map(h => {
-        const members = ALL_DATA.filter(w => w.NO_KK === h.NO_KK && w.NIK !== h.NIK);
+      const kks = ALL_DATA.filter(w => String(w["Status Hubungan Keluarga"]).toLowerCase().includes("kepala keluarga"));
+      document.getElementById('kk-list').innerHTML = kks.map(k => {
+        const members = ALL_DATA.filter(w => w["Nomor KK"] === k["Nomor KK"] && w.NIK !== k.NIK);
         return `
-          <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-            <div class="flex items-center gap-4 mb-4">
-              <div class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black">${h.Blok}${h.Nomer}</div>
-              <div>
-                <h3 class="font-black text-slate-800">${h.Nama}</h3>
-                <p class="text-[9px] text-slate-400 font-bold uppercase">NO KK: ${h.NO_KK}</p>
-              </div>
+          <div class="bg-white p-6 rounded-3xl border border-slate-100">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="bg-blue-600 text-white p-2 rounded-xl text-xs font-black">${k.Blok}-${k.Nomer}</div>
+              <div><p class="font-bold text-slate-800">${k.Nama}</p><p class="text-[9px] text-slate-400">KK: ${k["Nomor KK"]}</p></div>
             </div>
             <div class="space-y-1">
-              <p class="text-[8px] font-black text-slate-300 uppercase mb-2">Anggota Keluarga (${members.length})</p>
-              ${members.map(m => `<div class="flex justify-between text-xs p-2 bg-slate-50 rounded-lg"><span>${m.Nama}</span><span class="text-[9px] text-slate-400 uppercase">${m.Status_Keluarga}</span></div>`).join('')}
+               ${members.map(m => `<div class="bg-slate-50 p-2 rounded-lg flex justify-between text-[10px]"><span>${m.Nama}</span><span class="text-slate-400 italic">${m["Status Hubungan Keluarga"]}</span></div>`).join('')}
+               ${members.length === 0 ? '<p class="text-[10px] text-slate-300">Hanya KK Terdaftar</p>' : ''}
             </div>
           </div>
         `;
       }).join('');
     }
 
-    function openDetail(nik) {
-      const w = ALL_DATA.find(x => x.NIK === String(nik));
-      if (!w) return;
-      const content = document.getElementById('detail-content');
-      content.innerHTML = `
-        <div class="flex items-center gap-6 mb-8">
-          <div class="w-24 h-24 bg-slate-100 rounded-[2rem] overflow-hidden">
-            ${w.Foto && w.Foto !== '-' ? `<img src="${w.Foto}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-300"><span class="material-icons text-5xl">person</span></div>`}
+    function showDetail(nik) {
+      const w = ALL_DATA.find(x => x.NIK == nik);
+      if(!w) return;
+      document.getElementById('detail-body').innerHTML = `
+        <div class="flex flex-col items-center mb-4">
+          <div class="w-24 h-24 bg-slate-100 rounded-3xl overflow-hidden mb-2">
+             ${w.Foto && w.Foto !== '-' ? `<img src="${w.Foto}" class="w-full h-full object-cover">` : `<span class="material-icons text-6xl text-slate-200 mt-4">person</span>`}
           </div>
-          <div>
-            <h2 class="text-2xl font-black text-slate-800">${w.Nama}</h2>
-            <p class="text-blue-500 font-bold uppercase text-xs">${w.Status_Keluarga}</p>
-          </div>
+          <h4 class="font-black text-xl">${w.Nama}</h4>
+          <span class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">${w["Status Hubungan Keluarga"]}</span>
         </div>
-        <div class="grid grid-cols-2 gap-y-6 gap-x-4">
-          <div><p class="text-[9px] font-black text-slate-300 uppercase">NIK</p><p class="text-sm font-bold text-slate-700 font-mono">${w.NIK}</p></div>
-          <div><p class="text-[9px] font-black text-slate-300 uppercase">Nomor KK</p><p class="text-sm font-bold text-slate-700 font-mono">${w.NO_KK}</p></div>
-          <div><p class="text-[9px] font-black text-slate-300 uppercase">Kelamin</p><p class="text-sm font-bold text-slate-700">${w.Kelamin}</p></div>
-          <div><p class="text-[9px] font-black text-slate-300 uppercase">Agama</p><p class="text-sm font-bold text-slate-700">${w.Agama}</p></div>
-          <div><p class="text-[9px] font-black text-slate-300 uppercase">Tgl Lahir</p><p class="text-sm font-bold text-slate-700">${w.Tempat_Lahir}, ${w.Tanggal_Lahir}</p></div>
-          <div><p class="text-[9px] font-black text-slate-300 uppercase">Pekerjaan</p><p class="text-sm font-bold text-slate-700">${w.Pekerjaan}</p></div>
-          <div><p class="text-[9px] font-black text-slate-300 uppercase">No HP</p><p class="text-sm font-bold text-slate-700">${w.NO_HP}</p></div>
-          <div><p class="text-[9px] font-black text-slate-300 uppercase">Domisili</p><p class="text-sm font-bold text-slate-700">Blok ${w.Blok}/${w.Nomer} RT 0${w.RT}</p></div>
-          <div class="col-span-2"><p class="text-[9px] font-black text-slate-300 uppercase">Alamat KTP</p><p class="text-sm font-bold text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100">${w.Alamat_KTP}</p></div>
+        <div class="grid grid-cols-2 gap-4 text-xs">
+          <div><p class="text-slate-400 font-bold uppercase text-[8px]">NIK</p><p class="font-bold">${clean(w.NIK)}</p></div>
+          <div><p class="text-slate-400 font-bold uppercase text-[8px]">Nomor KK</p><p class="font-bold">${clean(w["Nomor KK"])}</p></div>
+          <div><p class="text-slate-400 font-bold uppercase text-[8px]">Tempat Lahir</p><p class="font-bold">${clean(w["Tempat Lahir"])}</p></div>
+          <div><p class="text-slate-400 font-bold uppercase text-[8px]">Tgl Lahir</p><p class="font-bold">${clean(w["Tanggal Lahir"])}</p></div>
+          <div><p class="text-slate-400 font-bold uppercase text-[8px]">No HP</p><p class="font-bold">${clean(w["No HP"])}</p></div>
+          <div><p class="text-slate-400 font-bold uppercase text-[8px]">Pekerjaan</p><p class="font-bold">${clean(w.Pekerjaan)}</p></div>
+          <div class="col-span-2"><p class="text-slate-400 font-bold uppercase text-[8px]">Alamat KTP</p><p class="bg-slate-50 p-3 rounded-xl">${clean(w["Alamat KTP"])}</p></div>
         </div>
       `;
       document.getElementById('modal-detail').classList.add('active');
     }
 
-    function drawCharts(stats) {
-      if(genderChart) genderChart.destroy();
-      genderChart = new Chart(document.getElementById('chartGender'), {
-        type: 'doughnut',
-        data: { labels: ['Pria', 'Wanita'], datasets: [{ data: [stats.gender['Laki-Laki'], stats.gender['Perempuan']], backgroundColor: ['#3b82f6', '#ec4899'] }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Gender' }, legend: { position: 'bottom' } } }
-      });
+    function renderChart(rtData) {
+      const labels = Object.keys(rtData).sort();
+      const vals = labels.map(l => rtData[l]);
       if(rtChart) rtChart.destroy();
       rtChart = new Chart(document.getElementById('chartRT'), {
         type: 'bar',
-        data: { labels: ['RT 1', 'RT 2', 'RT 3', 'RT 4'], datasets: [{ label: 'Warga', data: Object.values(stats.rt), backgroundColor: '#6366f1' }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Sebaran Per RT' } } }
+        data: { labels: labels.map(l => 'RT '+l), datasets: [{ label: 'Warga', data: vals, backgroundColor: '#3b82f6', borderRadius: 10 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
       });
     }
 
-    function filterData() {
-      const q = document.getElementById('search-input').value.toLowerCase();
-      renderWarga(ALL_DATA.filter(w => w.Nama.toLowerCase().includes(q) || w.NIK.includes(q)));
+    function doSearch() {
+      const q = document.getElementById('search').value.toLowerCase();
+      const filtered = ALL_DATA.filter(w => w.Nama.toLowerCase().includes(q) || w.NIK.toString().includes(q));
+      renderWarga(filtered);
     }
 
-    function navigate(p) { 
+    function navigate(p) {
       document.querySelectorAll('.page').forEach(e => e.classList.toggle('active', e.id === 'page-'+p));
-      // Update Bottom Nav active state
       document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('active', e.id === 'nav-'+p));
     }
-    
-    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-    function showLoading(s, t) { document.getElementById('loading').style.display = s ? 'flex' : 'none'; if(t) document.getElementById('loading-text').innerText = t; }
     function logout() { location.reload(); }
+    function closeModal() { document.getElementById('modal-detail').classList.remove('active'); }
+    function toggleLoading(s) { document.getElementById('loading').classList.toggle('hidden', !s); }
   </script>
 </body>
 </html>
