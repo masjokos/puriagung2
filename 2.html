@@ -550,21 +550,22 @@
         const nomer = document.getElementById('f-nomer').value;
         const rt = document.getElementById('f-rt').value;
 
-        // PERBAIKAN: Kunci data harus sesuai dengan payload di code.gs
+        // Menyusun payload data
         const data = {
             nik: document.getElementById('f-nik').value,
             kk: document.getElementById('f-kk').value,
             nama: document.getElementById('f-nama').value,
             kelamin: document.getElementById('f-kelamin').value,
             agama: document.getElementById('f-agama').value,
-            tempat: document.getElementById('f-tempat-lahir').value, // Sesuai case 'tempat lahir': return payload.tempat;
-            tanggal: document.getElementById('f-tgl-lahir').value, // Sesuai case 'tanggal lahir': return payload.tanggal;
+            tempat: document.getElementById('f-tempat-lahir').value,
+            tanggal: document.getElementById('f-tgl-lahir').value,
             perkawinan: document.getElementById('f-perkawinan').value,
             blok: blok,
             nomer: nomer,
             rt: rt,
-            alamatKTP: document.getElementById('f-ktp-alamat').value, // Sesuai case 'alamat ktp': return payload.alamatKTP;
-            alamatTinggal: `Blok ${blok}/${nomer} RT 0${rt}`,
+            alamatKTP: document.getElementById('f-ktp-alamat').value,
+            // PERBAIKAN FORMAT: Blok [Huruf] No [Angka]
+            alamatTinggal: `Blok ${blok} No ${nomer}`,
             pekerjaan: document.getElementById('f-pekerjaan').value,
             hp: document.getElementById('f-hp').value,
             tinggal: document.getElementById('f-tinggal').value,
