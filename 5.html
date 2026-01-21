@@ -575,6 +575,15 @@
     async function handleSaveWarga(e) {
         e.preventDefault();
         toggleLoading(true);
+
+        // Ambil nilai individual alamat domisili
+        const blok = document.getElementById('f-blok').value;
+        const nomer = document.getElementById('f-nomer').value;
+        const rt = document.getElementById('f-rt').value;
+
+        // Gabungkan menjadi string Alamat Tinggal (untuk Kolom N)
+        const alamatTinggal = `Blok ${blok} No ${nomer} RT 0${rt}`;
+
         const payload = { 
             originalNik: document.getElementById('f-original-nik').value, 
             nik: document.getElementById('f-nik').value, 
@@ -586,19 +595,29 @@
             tanggal: document.getElementById('f-tanggal').value,
             perkawinan: document.getElementById('f-perkawinan').value,
             tinggal: document.getElementById('f-tinggal').value,
-            blok: document.getElementById('f-blok').value, 
-            nomer: document.getElementById('f-nomer').value, 
-            rt: document.getElementById('f-rt').value, 
+            blok: blok, 
+            nomer: nomer, 
+            rt: rt, 
+            alamatTinggal: alamatTinggal, // DATA BARU UNTUK KOLOM N
             alamatKTP: document.getElementById('f-alamat-ktp').value,
             statusKel: document.getElementById('f-status-kel').value,
             hp: document.getElementById('f-hp').value,
             pekerjaan: document.getElementById('f-pekerjaan').value
         };
+
         try {
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'saveWarga', args: [payload] }) });
+            await fetch(API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: 'saveWarga', args: [payload] }) 
+            });
             navigate('dashboard');
             refreshData();
-        } catch (err) { navigate('dashboard'); refreshData(); } finally { toggleLoading(false); }
+        } catch (err) { 
+            navigate('dashboard'); 
+            refreshData(); 
+        } finally { 
+            toggleLoading(false); 
+        }
     }
   </script>
 </body>
