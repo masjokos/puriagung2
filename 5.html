@@ -1,548 +1,605 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Warga - Puri Agung 2</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        :root { --primary: #4f46e5; --bg-main: #f8fafc; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #1e293b; }
-        .card-shadow { box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05); }
-        .nav-item.active { background: var(--primary); color: white; box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3); }
-        .bottom-nav-item.active { color: var(--primary); }
-        .loader { border-top-color: var(--primary); animation: spinner 1s linear infinite; }
-        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .modal-blur { backdrop-filter: blur(8px); }
-        body.modal-open { overflow: hidden; }
-        input:read-only, textarea:read-only { background-color: #f1f5f9; cursor: not-allowed; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Warga - Dashboard & Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- Load Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    
+    :root {
+      --soft-indigo: #6366f1;
+      --bg-milk: #F8FAFC; 
+    }
+
+    body { 
+      font-family: 'Plus Jakarta Sans', sans-serif; 
+      background-color: var(--bg-milk); 
+      color: #334155;
+      margin: 0;
+    }
+
+    #loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      display: none;
+      align-items: center; justify-content: center;
+    }
+
+    #auth-container { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); }
+    #main-app { display: none; min-height: 100vh; flex-direction: column; }
+    .page { display: none; }
+    .page.active { display: block; animation: fadeIn 0.3s ease-out; }
+    
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .login-card { background: white; width: 100%; max-width: 400px; padding: 40px; border-radius: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.05); text-align: center; }
+    
+    .input-group { position: relative; margin-bottom: 12px; }
+    .input-group .material-icons { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 18px; }
+    
+    input.modern-input, select.modern-input, textarea.modern-input {
+      width: 100%; background: #f8fafc; border: 2px solid #f1f5f9; padding: 12px 16px 12px 48px; border-radius: 16px; font-size: 13px; font-weight: 600; color: #1e293b;
+    }
+    textarea.modern-input { padding-left: 16px; min-height: 80px; }
+
+    .form-label { display: block; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin: 0 0 6px 10px; }
+    .btn-submit { width: 100%; background: var(--soft-indigo); color: white; padding: 16px; border-radius: 20px; font-weight: 700; margin-top: 10px; }
+
+    /* Dashboard UI */
+    .stat-card { background: white; padding: 20px; border-radius: 24px; border: 1px solid #f1f5f9; position: relative; overflow: hidden; }
+    
+    .bottom-nav { position: fixed; bottom: 20px; left: 20px; right: 20px; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); height: 70px; border-radius: 24px; display: flex; align-items: center; justify-content: space-around; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; }
+    .nav-item { color: #94a3b8; display: flex; flex-direction: column; align-items: center; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+    .nav-item.active { color: var(--soft-indigo); }
+    .btn-add-center { background: var(--soft-indigo); color: white; width: 56px; height: 56px; border-radius: 20px; display: flex; align-items: center; justify-content: center; transform: translateY(-20px); box-shadow: 0 8px 15px rgba(99,102,241,0.3); border: 4px solid white; }
+
+    .warga-card { background: white; padding: 12px; border-radius: 20px; display: flex; align-items: center; gap: 12px; margin-bottom: 10px; border: 1px solid #f1f5f9; cursor: pointer; transition: transform 0.2s; }
+    .warga-card:active { transform: scale(0.98); }
+    .avatar { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: white; }
+
+    .pagination-controls { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 20px; padding-bottom: 20px; }
+    .btn-page { background: white; border: 1px solid #f1f5f9; padding: 8px 12px; border-radius: 12px; font-weight: 800; font-size: 10px; color: #64748b; text-transform: uppercase; }
+    .btn-page:disabled { opacity: 0.3; }
+
+    #detail-modal { position: fixed; inset: 0; background: white; z-index: 2000; display: none; flex-direction: column; overflow-y: auto; }
+  </style>
 </head>
-<body class="overflow-x-hidden pb-20 lg:pb-0">
+<body>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="fixed inset-0 z-[200] bg-white/80 modal-blur flex flex-col items-center justify-center hidden">
-        <div class="loader ease-linear rounded-full border-4 border-slate-100 h-12 w-12 mb-4"></div>
-        <h3 class="text-indigo-600 font-bold animate-pulse" id="loadingText">Memproses...</h3>
+  <div id="loading-overlay">
+    <div class="flex flex-col items-center">
+      <div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin"></div>
     </div>
+  </div>
 
-    <!-- Modal Detail -->
-    <div id="modalDetail" class="fixed inset-0 z-[150] hidden flex items-center justify-center p-4 bg-slate-900/60 modal-blur" onclick="closeModal()">
-        <div class="bg-white w-full max-w-2xl max-h-[90vh] rounded-[2rem] card-shadow overflow-y-auto" onclick="event.stopPropagation()">
-            <div class="sticky top-0 z-10 bg-indigo-600 p-6 flex justify-between items-center text-white">
-                <div class="flex items-center gap-3">
-                    <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-full transition"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
-                    <h3 class="text-lg font-extrabold" id="modalTitle">Detail Profil</h3>
-                </div>
-                <button onclick="closeModal()" class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition"><i data-lucide="x" class="w-6 h-6"></i></button>
-            </div>
-            <div class="p-6 md:p-8" id="detailContent"></div>
+  <!-- Detail Modal -->
+  <div id="detail-modal">
+    <div class="p-6">
+        <div class="flex justify-between items-center mb-6">
+            <button onclick="closeDetail()" class="text-slate-400"><span class="material-icons">arrow_back_ios</span></button>
+            <h2 class="text-lg font-black text-slate-800">Profil Lengkap</h2>
+            <button id="btn-edit-trigger" class="text-indigo-500 font-bold text-sm">Edit</button>
         </div>
+        <div id="detail-content" class="space-y-4 pb-24"></div>
     </div>
+  </div>
 
-    <!-- Login Page -->
-    <div id="loginPage" class="min-h-screen flex items-center justify-center bg-[#1e1b4b] p-4">
-        <div class="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 md:p-12">
-            <div class="text-center mb-10">
-                <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 rotate-3"><i data-lucide="shield-check" class="w-8 h-8"></i></div>
-                <h1 class="text-2xl font-extrabold text-slate-900">Sistem Warga</h1>
-                <p class="text-slate-400 text-sm">Puri Agung 2 - Admin Portal</p>
-            </div>
-            <form id="loginForm" class="space-y-5">
-                <input type="text" id="username" class="w-full px-6 py-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Username" required>
-                <input type="password" id="password" class="w-full px-6 py-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Password" required>
-                <div id="loginError" class="hidden text-red-500 text-xs font-bold text-center">Username/Password salah</div>
-                <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition">Masuk</button>
-            </form>
+  <div id="auth-container">
+    <div class="login-card">
+        <h1 class="text-xl font-extrabold text-slate-800 mb-8">E-Warga Login</h1>
+        <form onsubmit="handleLogin(event)">
+            <div class="input-group"><input type="text" id="login-user" placeholder="Username" class="modern-input" required><span class="material-icons">person</span></div>
+            <div class="input-group"><input type="password" id="login-pass" placeholder="Password" class="modern-input" required><span class="material-icons">lock</span></div>
+            <button type="submit" class="btn-submit !mt-4">Masuk</button>
+        </form>
+    </div>
+  </div>
+
+  <div id="main-app">
+    <header class="p-6 flex justify-between items-center">
+        <div>
+            <p class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Selamat Datang</p>
+            <h1 id="welcome-text" class="text-xl font-extrabold text-slate-800">Halo!</h1>
         </div>
-    </div>
+        <button onclick="logout()" class="text-slate-300"><span class="material-icons">logout</span></button>
+    </header>
 
-    <!-- Main App -->
-    <div id="mainApp" class="hidden min-h-screen flex flex-col lg:flex-row">
-        <!-- Sidebar -->
-        <aside class="hidden lg:flex w-72 bg-white border-r border-slate-100 flex-col p-8 sticky top-0 h-screen">
-            <div class="flex items-center gap-3 mb-10"><div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white"><i data-lucide="home" class="w-6 h-6"></i></div><span class="font-extrabold text-xl">Puri Agung 2</span></div>
-            <nav class="space-y-2 flex-1">
-                <button onclick="showPage('dashboard')" class="nav-item w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-slate-500 active" data-page="dashboard"><i data-lucide="layout-grid"></i> Beranda</button>
-                <button onclick="showPage('dataWarga')" class="nav-item w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-slate-500" data-page="dataWarga"><i data-lucide="users"></i> Data Warga</button>
-                <button onclick="showPage('kepalaKeluarga')" class="nav-item w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-slate-500" data-page="kepalaKeluarga"><i data-lucide="user-square"></i> Kepala Keluarga</button>
-                <button onclick="showPage('formWarga')" class="nav-item w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-slate-500" data-page="formWarga"><i data-lucide="user-plus"></i> Tambah</button>
-            </nav>
-            <button onclick="logout()" class="flex items-center gap-4 px-6 py-4 text-red-500 font-bold"><i data-lucide="log-out"></i> Keluar</button>
-        </aside>
-
-        <!-- Bottom Nav (Mobile) -->
-        <nav class="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t p-3 z-[60] flex justify-around rounded-t-3xl shadow-up">
-            <button onclick="showPage('dashboard')" class="bottom-nav-item flex flex-col items-center gap-1 text-slate-400 active" data-page="dashboard"><i data-lucide="layout-grid"></i></button>
-            <button onclick="showPage('dataWarga')" class="bottom-nav-item flex flex-col items-center gap-1 text-slate-400" data-page="dataWarga"><i data-lucide="users"></i></button>
-            <button onclick="showPage('formWarga')" class="bottom-nav-item -mt-8 flex flex-col items-center"><div class="w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center border-4 border-white shadow-lg"><i data-lucide="plus"></i></div></button>
-            <button onclick="showPage('kepalaKeluarga')" class="bottom-nav-item flex flex-col items-center gap-1 text-slate-400" data-page="kepalaKeluarga"><i data-lucide="user-square"></i></button>
-            <button onclick="logout()" class="bottom-nav-item flex flex-col items-center gap-1 text-slate-400"><i data-lucide="log-out"></i></button>
-        </nav>
-
-        <!-- Content Area -->
-        <div class="flex-1 flex flex-col min-w-0">
-            <header class="p-6 border-b bg-white/70 backdrop-blur sticky top-0 z-30 flex justify-between items-center">
-                <h2 id="pageTitle" class="text-xl font-extrabold text-slate-800">Dashboard</h2>
-                <div class="flex items-center gap-2">
-                    <button onclick="refreshData()" class="p-2 hover:bg-slate-100 rounded-lg transition" title="Refresh Data">
-                        <i data-lucide="refresh-cw" class="w-5 h-5 text-slate-500"></i>
-                    </button>
-                    <div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center font-bold">AD</div>
-                </div>
-            </header>
-
-            <div class="p-6">
-                <!-- Dashboard -->
-                <div id="page-dashboard" class="page-content space-y-6">
-                    <div id="statGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="bg-white p-6 rounded-[2rem] border border-slate-100 card-shadow">
-                            <h3 class="font-bold text-slate-800 mb-4">Statistik Jenis Kelamin</h3>
-                            <canvas id="genderChart" height="200"></canvas>
-                        </div>
-                        <div class="bg-white p-6 rounded-[2rem] border border-slate-100 card-shadow">
-                            <h3 class="font-bold text-slate-800 mb-4">Statistik Per RT</h3>
-                            <canvas id="rtChart" height="200"></canvas>
-                        </div>
+    <main class="flex-1 p-6 pb-32">
+      <!-- Dashboard -->
+      <section id="page-dashboard" class="page active space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+            <div class="stat-card">
+                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Warga</p>
+                <h2 id="stat-total" class="text-2xl font-black text-slate-800">0</h2>
+            </div>
+            <div class="stat-card">
+                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Kepala Keluarga</p>
+                <h2 id="stat-kk" class="text-2xl font-black text-slate-800">0</h2>
+            </div>
+        </div>
+        
+        <!-- Statistik Gender -->
+        <div class="stat-card">
+            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-4">Statistik Jenis Kelamin</p>
+            <div class="flex items-center gap-4">
+                <div class="w-24 h-24"><canvas id="chartGender"></canvas></div>
+                <div class="flex-1 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-indigo-400"></div><span class="text-[10px] font-bold text-slate-500">Laki-laki</span></div>
+                        <span id="label-pria" class="text-xs font-black text-slate-800">0</span>
                     </div>
-                </div>
-
-                <!-- Data Warga -->
-                <div id="page-dataWarga" class="page-content hidden space-y-4">
-                    <div class="flex flex-col md:flex-row gap-4 mb-6">
-                        <div class="flex-1 relative">
-                            <i data-lucide="search" class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="searchWarga" oninput="filterWarga()" placeholder="Cari Nama atau NIK..." class="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
-                        </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-pink-400"></div><span class="text-[10px] font-bold text-slate-500">Perempuan</span></div>
+                        <span id="label-wanita" class="text-xs font-black text-slate-800">0</span>
                     </div>
-                    <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead class="bg-slate-50 border-b border-slate-100">
-                                    <tr>
-                                        <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Warga</th>
-                                        <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Alamat</th>
-                                        <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Kontak</th>
-                                        <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="wargaTableBody" class="divide-y divide-slate-50"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Kepala Keluarga -->
-                <div id="page-kepalaKeluarga" class="page-content hidden">
-                    <div id="kkContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-                </div>
-
-                <!-- Page Form Warga -->
-                <div id="page-formWarga" class="page-content hidden">
-                    <form id="addWargaForm" class="max-w-4xl mx-auto space-y-8 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
-                        <div class="border-b border-slate-100 pb-6 flex items-center gap-4">
-                            <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center"><i data-lucide="user-plus" class="w-6 h-6"></i></div>
-                            <div>
-                                <h3 class="font-extrabold text-xl text-slate-800">Formulir Data Warga</h3>
-                                <p class="text-sm text-slate-400">Silakan lengkapi data di bawah ini.</p>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Data Identitas -->
-                            <div class="space-y-4">
-                                <label class="block">
-                                    <span class="text-xs font-bold text-slate-500 uppercase px-1">Nama Lengkap</span>
-                                    <input type="text" name="nama" placeholder="Nama sesuai KTP" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" required>
-                                </label>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <label class="block">
-                                        <span class="text-xs font-bold text-slate-500 uppercase px-1">NIK</span>
-                                        <input type="number" name="nik" placeholder="16 Digit NIK" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" required>
-                                    </label>
-                                    <label class="block">
-                                        <span class="text-xs font-bold text-slate-500 uppercase px-1">No KK</span>
-                                        <input type="number" name="no_kk" placeholder="16 Digit No KK" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" required>
-                                    </label>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <label class="block">
-                                        <span class="text-xs font-bold text-slate-500 uppercase px-1">Jenis Kelamin</span>
-                                        <select name="kelamin" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" required>
-                                            <option value="">Pilih</option>
-                                            <option value="Laki-Laki">Laki-Laki</option>
-                                            <option value="Perempuan">Perempuan</option>
-                                        </select>
-                                    </label>
-                                    <label class="block">
-                                        <span class="text-xs font-bold text-slate-500 uppercase px-1">Agama</span>
-                                        <select name="agama" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                                            <option value="Islam">Islam</option>
-                                            <option value="Kristen">Kristen</option>
-                                            <option value="Katolik">Katolik</option>
-                                            <option value="Buddha">Buddha</option>
-                                            <option value="Hindu">Hindu</option>
-                                            <option value="Konghucu">Konghucu</option>
-                                        </select>
-                                    </label>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <label class="block">
-                                        <span class="text-xs font-bold text-slate-500 uppercase px-1">Tempat Lahir</span>
-                                        <input type="text" name="tempat_lahir" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                                    </label>
-                                    <label class="block">
-                                        <span class="text-xs font-bold text-slate-500 uppercase px-1">Tgl Lahir</span>
-                                        <input type="date" name="tanggal_lahir" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                                    </label>
-                                </div>
-                            </div>
-
-                            <!-- Data Alamat & Status -->
-                            <div class="space-y-4">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <label class="block">
-                                        <span class="text-xs font-bold text-slate-500 uppercase px-1">Status Kawin</span>
-                                        <select name="status_perkawinan" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                                            <option value="Belum Kawin">Belum Kawin</option>
-                                            <option value="Kawin">Kawin</option>
-                                            <option value="Cerai Hidup">Cerai Hidup</option>
-                                            <option value="Cerai Mati">Cerai Mati</option>
-                                        </select>
-                                    </label>
-                                    <label class="block">
-                                        <span class="text-xs font-bold text-slate-500 uppercase px-1">Status Tinggal</span>
-                                        <select name="status_tinggal" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                                            <option value="Tetap">Tetap</option>
-                                            <option value="Kontrak">Kontrak</option>
-                                            <option value="Kos">Kos</option>
-                                        </select>
-                                    </label>
-                                </div>
-                                <div class="grid grid-cols-3 gap-4">
-                                    <label class="block">
-                                        <span class="text-xs font-bold text-slate-500 uppercase px-1">Blok</span>
-                                        <select name="blok" id="inputBlok" onchange="syncAddress()" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                                            <option value="A">A</option><option value="B">B</option><option value="B1">B1</option>
-                                            <option value="C">C</option><option value="D">D</option><option value="E">E</option>
-                                            <option value="F">F</option><option value="G">G</option>
-                                        </select>
-                                    </label>
-                                    <label class="block">
-                                        <span class="text-xs font-bold text-slate-500 uppercase px-1">Nomer</span>
-                                        <input type="text" name="nomer" id="inputNomer" oninput="syncAddress()" placeholder="01" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                                    </label>
-                                    <label class="block">
-                                        <span class="text-xs font-bold text-slate-500 uppercase px-1">RT</span>
-                                        <select name="rt" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                                            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-                                        </select>
-                                    </label>
-                                </div>
-                                <label class="block">
-                                    <div class="flex justify-between px-1">
-                                        <span class="text-xs font-bold text-slate-500 uppercase">Alamat KTP</span>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="checkAlamatSama" onchange="toggleAlamatSama()" class="accent-indigo-600">
-                                            <span class="text-[10px] font-bold text-indigo-600 cursor-pointer">Sama dg blok</span>
-                                        </div>
-                                    </div>
-                                    <textarea name="alamat_ktp" id="inputAlamatKTP" rows="2" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" required></textarea>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50">
-                            <div class="space-y-4">
-                                <label class="block">
-                                    <span class="text-xs font-bold text-slate-500 uppercase px-1">Alamat Tinggal</span>
-                                    <textarea name="alamat_tinggal" placeholder="Alamat domisili saat ini" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
-                                </label>
-                                <label class="block">
-                                    <span class="text-xs font-bold text-slate-500 uppercase px-1">Status Hub. Keluarga</span>
-                                    <select name="status_keluarga" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                                        <option value="Kepala Keluarga">Kepala Keluarga</option>
-                                        <option value="Istri">Istri</option>
-                                        <option value="Anak">Anak</option>
-                                        <option value="Orang Tua">Orang Tua</option>
-                                        <option value="Lainnya">Lainnya</option>
-                                    </select>
-                                </label>
-                            </div>
-                            <div class="space-y-4">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <label class="block">
-                                        <span class="text-xs font-bold text-slate-500 uppercase px-1">Pekerjaan</span>
-                                        <input type="text" name="pekerjaan" class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                                    </label>
-                                    <label class="block">
-                                        <span class="text-xs font-bold text-slate-500 uppercase px-1">No HP</span>
-                                        <input type="tel" name="no_hp" placeholder="08..." class="mt-1 w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                                    </label>
-                                </div>
-                                <label class="block">
-                                    <span class="text-xs font-bold text-slate-500 uppercase px-1">Foto Warga</span>
-                                    <div class="mt-1">
-                                        <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-slate-100 border-dashed rounded-2xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
-                                            <div class="flex flex-col items-center justify-center pt-2 pb-2">
-                                                <i data-lucide="camera" class="w-6 h-6 text-slate-400 mb-1"></i>
-                                                <p id="fileName" class="text-[10px] text-slate-500 font-bold">PILIH FOTO</p>
-                                            </div>
-                                            <input id="fileUpload" type="file" accept="image/*" class="hidden" onchange="previewFile()" />
-                                        </label>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-5 rounded-3xl shadow-xl hover:bg-indigo-700 active:scale-[0.98] transition flex items-center justify-center gap-3">
-                            <i data-lucide="save"></i> Simpan Data Warga
-                        </button>
-                    </form>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script>
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz3qxTEDd47HifJz4bBQaRELeavO00j8-paFtgP3CeqId5DcAHTZeTZy3SQYAzwmEV1MQ/exec';
-        let dbWarga = [];
-        let genderChart, rtChart;
+        <!-- Statistik Distribusi Per RT -->
+        <div class="stat-card">
+            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-4">Distribusi Per RT</p>
+            <div class="h-40">
+                <canvas id="chartRT"></canvas>
+            </div>
+        </div>
 
-        // --- Helper Properti ---
-        function getProp(obj, searchKeys) {
-            if (!obj) return "-";
-            const normObj = {};
-            for (let k in obj) normObj[k.toLowerCase().replace(/[\s_]/g, '')] = obj[k];
-            for (let k of searchKeys) {
-                const search = k.toLowerCase().replace(/[\s_]/g, '');
-                if (normObj[search] !== undefined) return normObj[search];
-            }
-            return "-";
-        }
+        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest pt-4">Warga Terbaru</h3>
+        <div id="latest-list"></div>
+      </section>
 
-        // --- Alamat & UI ---
-        function syncAddress() {
-            if (document.getElementById('checkAlamatSama').checked) {
-                const b = document.getElementById('inputBlok').value;
-                const n = document.getElementById('inputNomer').value;
-                document.getElementById('inputAlamatKTP').value = `Blok ${b} No. ${n}`;
-            }
-        }
+      <!-- Daftar Warga -->
+      <section id="page-warga" class="page">
+        <h2 class="text-xl font-black text-slate-800 mb-4">Daftar Warga</h2>
+        <div class="mb-4 space-y-3">
+            <div class="input-group">
+                <input type="text" id="search-warga" placeholder="Cari Nama, NIK, Blok..." class="modern-input" oninput="resetWargaPage(); filterWargaList()">
+                <span class="material-icons">search</span>
+            </div>
+            <div class="input-group !mb-0">
+                <select id="filter-rt" class="modern-input !pl-10" onchange="resetWargaPage(); filterWargaList()">
+                    <option value="">Semua RT</option>
+                    <option value="1">RT 01</option><option value="2">RT 02</option><option value="3">RT 03</option><option value="4">RT 04</option>
+                </select>
+                <span class="material-icons">filter_list</span>
+            </div>
+        </div>
+        <div id="all-warga-list"></div>
+        <div id="warga-pagination" class="pagination-controls"></div>
+      </section>
 
-        function toggleAlamatSama() {
-            const isChecked = document.getElementById('checkAlamatSama').checked;
-            document.getElementById('inputAlamatKTP').readOnly = isChecked;
-            syncAddress();
-        }
+      <!-- Data Keluarga -->
+      <section id="page-kk" class="page">
+        <h2 class="text-xl font-black text-slate-800 mb-4">Data Keluarga</h2>
+        <div class="mb-4 space-y-3">
+            <div class="input-group">
+                <input type="text" id="search-kk" placeholder="Cari Nama KK atau No KK..." class="modern-input" oninput="resetKkPage(); filterKkList()">
+                <span class="material-icons">search</span>
+            </div>
+        </div>
+        <div id="kk-list"></div>
+        <div id="kk-pagination" class="pagination-controls"></div>
+      </section>
 
-        function previewFile() {
-            const f = document.getElementById('fileUpload').files[0];
-            if (f) document.getElementById('fileName').innerText = f.name;
-        }
+      <!-- Form (Full Fields) -->
+      <section id="page-add" class="page">
+          <h2 id="form-title" class="text-xl font-black text-slate-800 mb-6">Input Data Warga</h2>
+          <form id="form-warga" onsubmit="handleSaveWarga(event)" class="space-y-4 pb-24">
+              <input type="hidden" id="f-original-nik">
+              
+              <!-- Identitas Dasar -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label class="form-label">NIK</label><input type="number" id="f-nik" class="modern-input" required></div>
+                  <div><label class="form-label">No KK</label><input type="number" id="f-kk" class="modern-input" required></div>
+              </div>
 
-        // --- Data Handling ---
-        async function refreshData() {
-            setLoading(true, "Sinkronisasi Data...");
-            try {
-                const res = await fetch(`${WEB_APP_URL}?action=getWarga&t=${Date.now()}`);
-                const data = await res.json();
-                dbWarga = Array.isArray(data) ? data : [];
-                renderAll();
-            } catch (e) {
-                console.error("Refresh Error:", e);
-            }
-            setLoading(false);
-        }
+              <div><label class="form-label">Nama Lengkap</label><input type="text" id="f-nama" class="modern-input" required></div>
 
-        function renderAll() {
-            renderDashboard();
-            renderTableWarga(dbWarga);
-            renderKepalaKeluarga();
-            lucide.createIcons();
-        }
-
-        function renderDashboard() {
-            const total = dbWarga.length;
-            const kk = dbWarga.filter(w => getProp(w, ['Status Hub Keluarga', 'Status Keluarga']) === 'Kepala Keluarga').length;
-            const laki = dbWarga.filter(w => ["Laki-Laki", "L"].includes(getProp(w, ['Kelamin', 'Jenis Kelamin']))).length;
-            const perem = total - laki;
-
-            document.getElementById('statGrid').innerHTML = [
-                { l: 'Total Warga', v: total, i: 'users', c: 'bg-blue-500' },
-                { l: 'Kepala Keluarga', v: kk, i: 'user-square', c: 'bg-indigo-500' },
-                { l: 'Laki-Laki', v: laki, i: 'user', c: 'bg-cyan-500' },
-                { l: 'Perempuan', v: perem, i: 'user', c: 'bg-pink-500' }
-            ].map(x => `
-                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 card-shadow flex items-center gap-4">
-                    <div class="w-12 h-12 ${x.c} text-white rounded-2xl flex items-center justify-center"><i data-lucide="${x.i}"></i></div>
-                    <div><p class="text-xs font-bold text-slate-400 uppercase">${x.l}</p><h4 class="text-xl font-extrabold text-slate-800">${x.v}</h4></div>
+              <div class="grid grid-cols-2 gap-4">
+                <div><label class="form-label">Kelamin</label><select id="f-kelamin" class="modern-input"><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></div>
+                <div><label class="form-label">Agama</label>
+                    <select id="f-agama" class="modern-input">
+                        <option value="Islam">Islam</option><option value="Kristen">Kristen</option><option value="Katolik">Katolik</option><option value="Buddha">Buddha</option><option value="Hindu">Hindu</option><option value="Konghucu">Konghucu</option>
+                    </select>
                 </div>
-            `).join('');
+              </div>
 
-            updateCharts(laki, perem);
+              <!-- Kelahiran -->
+              <div class="grid grid-cols-2 gap-4">
+                  <div><label class="form-label">Tempat Lahir</label><input type="text" id="f-tempat" class="modern-input"></div>
+                  <div><label class="form-label">Tanggal Lahir</label><input type="date" id="f-tanggal" class="modern-input"></div>
+              </div>
+
+              <!-- Status -->
+              <div class="grid grid-cols-2 gap-4">
+                  <div><label class="form-label">Status Perkawinan</label>
+                      <select id="f-perkawinan" class="modern-input">
+                          <option value="Belum kawin">Belum kawin</option><option value="Kawin">Kawin</option><option value="Cerai Hidup">Cerai Hidup</option><option value="Cerai Mati">Cerai Mati</option>
+                      </select>
+                  </div>
+                  <div><label class="form-label">Status Tinggal</label>
+                      <select id="f-tinggal" class="modern-input">
+                          <option value="Tetap">Tetap</option><option value="Kontrak">Kontrak</option><option value="Kos">Kos</option><option value="Lainnya">Lainnya</option>
+                      </select>
+                  </div>
+              </div>
+
+              <!-- Alamat Tinggal -->
+              <div class="bg-indigo-50 p-4 rounded-2xl space-y-4">
+                  <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Alamat Tinggal Sekarang</p>
+                  <div class="grid grid-cols-3 gap-2">
+                    <div><label class="form-label">Blok</label><select id="f-blok" class="modern-input !pl-4" onchange="syncKtp()"><option value="A">A</option><option value="B">B</option><option value="B1">B1</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option><option value="G">G</option></select></div>
+                    <div><label class="form-label">No</label><input type="text" id="f-nomer" class="modern-input !pl-4" oninput="syncKtp()"></div>
+                    <div><label class="form-label">RT</label><select id="f-rt" class="modern-input !pl-4" onchange="syncKtp()"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+                  </div>
+              </div>
+
+              <!-- Alamat KTP -->
+              <div>
+                  <div class="flex justify-between items-center mb-1">
+                      <label class="form-label !mb-0">Alamat KTP</label>
+                      <label class="flex items-center gap-1 cursor-pointer">
+                          <input type="checkbox" id="sync-ktp-check" onchange="syncKtp()" class="w-3 h-3">
+                          <span class="text-[9px] font-bold text-slate-500 uppercase">Sama dengan alamat tinggal</span>
+                      </label>
+                  </div>
+                  <textarea id="f-alamat-ktp" class="modern-input" placeholder="Tulis alamat lengkap sesuai KTP..."></textarea>
+              </div>
+
+              <!-- Pekerjaan & Keluarga -->
+              <div class="grid grid-cols-2 gap-4">
+                  <div><label class="form-label">Status Keluarga</label>
+                      <select id="f-status-kel" class="modern-input">
+                          <option value="Kepala Keluarga">Kepala Keluarga</option><option value="Istri">Istri</option><option value="Anak">Anak</option><option value="Orang Tua">Orang Tua</option><option value="Lainnya">Lainnya</option>
+                      </select>
+                  </div>
+                  <div><label class="form-label">No HP / WA</label><input type="number" id="f-hp" class="modern-input"></div>
+              </div>
+
+              <div><label class="form-label">Pekerjaan</label>
+                  <select id="f-pekerjaan" class="modern-input">
+                      <option value="Belum/Tidak Bekerja">Belum/Tidak Bekerja</option><option value="Mengurus Rumah Tangga">Mengurus Rumah Tangga</option><option value="Pelajar/Mahasiswa">Pelajar/Mahasiswa</option><option value="Pensiunan">Pensiunan</option><option value="PNS">PNS</option><option value="TNI">TNI</option><option value="POLRI">POLRI</option><option value="Karyawan Swasta">Karyawan Swasta</option><option value="Wiraswasta">Wiraswasta</option><option value="Petani">Petani</option><option value="Nelayan">Nelayan</option>
+                  </select>
+              </div>
+
+              <button type="submit" class="btn-submit">Simpan Data Warga</button>
+          </form>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+        <button onclick="navigate('dashboard')" id="nav-dashboard" class="nav-item active"><span class="material-icons">dashboard</span><span>Beranda</span></button>
+        <button onclick="navigate('warga')" id="nav-warga" class="nav-item"><span class="material-icons">people</span><span>Warga</span></button>
+        <button onclick="openFormAdd()" class="btn-add-center"><span class="material-icons">add</span></button>
+        <button onclick="navigate('kk')" id="nav-kk" class="nav-item"><span class="material-icons">account_tree</span><span>Keluarga</span></button>
+        <button onclick="refreshData()" class="nav-item"><span class="material-icons">sync</span><span>Sync</span></button>
+    </nav>
+  </div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbyQnIfaRQhv6r9jL_bJ3-uX9RhyUSAnUF4kt_lTCpgkHjWtXsCk4OWTBLPxB3JDz6L0qw/exec";
+    let allData = [];
+    let genderChart;
+    let rtChart;
+    
+    // Pagination State
+    let wargaPage = 1;
+    let kkPage = 1;
+    const PAGE_SIZE = 20;
+
+    function toggleLoading(s) { document.getElementById('loading-overlay').style.display = s ? 'flex' : 'none'; }
+    
+    function navigate(p) {
+      document.querySelectorAll('.page').forEach(e => e.classList.toggle('active', e.id === 'page-'+p));
+      document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('active', e.id === 'nav-'+p));
+    }
+
+    // Fungsi Sync Alamat KTP
+    function syncKtp() {
+        const isChecked = document.getElementById('sync-ktp-check').checked;
+        const blok = document.getElementById('f-blok').value;
+        const no = document.getElementById('f-nomer').value;
+        const rt = document.getElementById('f-rt').value;
+        const target = document.getElementById('f-alamat-ktp');
+        
+        if(isChecked) {
+            target.value = `Blok ${blok} No ${no} RT 0${rt}`;
+            target.readOnly = true;
+            target.classList.add('opacity-60');
+        } else {
+            target.readOnly = false;
+            target.classList.remove('opacity-60');
         }
+    }
 
-        function updateCharts(l, p) {
-            const rtObj = {};
-            dbWarga.forEach(w => { const rt = w.RT || "?"; rtObj[rt] = (rtObj[rt] || 0) + 1; });
-            if (genderChart) genderChart.destroy();
-            if (rtChart) rtChart.destroy();
+    async function handleLogin(e) {
+      e.preventDefault();
+      toggleLoading(true);
+      const u = document.getElementById('login-user').value;
+      const p = document.getElementById('login-pass').value;
+      try {
+        const res = await fetch(`${API_URL}?action=checkLogin&args=${JSON.stringify([u, p])}`);
+        const result = await res.json();
+        if(result.success) {
+            document.getElementById('welcome-text').innerText = `Halo ${u}! 👋`;
+            document.getElementById('auth-container').style.display = 'none';
+            document.getElementById('main-app').style.display = 'flex';
+            refreshData();
+        } else { alert("Login Gagal"); }
+      } catch (err) { alert("Error"); } finally { toggleLoading(false); }
+    }
 
-            genderChart = new Chart(document.getElementById('genderChart'), {
-                type: 'doughnut',
-                data: { labels: ['Laki-Laki', 'Perempuan'], datasets: [{ data: [l, p], backgroundColor: ['#4f46e5', '#ec4899'] }] },
-                options: { plugins: { legend: { position: 'bottom' } } }
-            });
+    function logout() { location.reload(); }
 
-            const rts = Object.keys(rtObj).sort();
-            rtChart = new Chart(document.getElementById('rtChart'), {
-                type: 'bar',
-                data: { labels: rts.map(x => 'RT '+x), datasets: [{ label: 'Warga', data: rts.map(x => rtObj[x]), backgroundColor: '#6366f1' }] },
-                options: { scales: { y: { beginAtZero: true } } }
-            });
-        }
+    async function refreshData() {
+      toggleLoading(true);
+      try {
+        const res = await fetch(`${API_URL}?action=getAllWarga`);
+        allData = await res.json();
+        updateUI();
+      } catch (e) { alert("Gagal mengambil data"); } finally { toggleLoading(false); }
+    }
 
-        function renderTableWarga(data) {
-            const b = document.getElementById('wargaTableBody');
-            b.innerHTML = data.length ? data.map(w => `
-                <tr class="hover:bg-slate-50 transition cursor-pointer" onclick="viewDetail('${w.NIK}')">
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">${(w.Nama||"?").charAt(0)}</div>
-                            <div><p class="font-bold text-slate-800">${w.Nama}</p><p class="text-xs text-slate-400">NIK: ${w.NIK}</p></div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4"><p class="text-sm font-medium text-slate-600">Blok ${w.Blok}/${w.Nomer}</p><p class="text-xs text-slate-400">RT ${w.RT}</p></td>
-                    <td class="px-6 py-4 text-sm text-slate-600">${getProp(w, ['No HP']) || '-'}</td>
-                    <td class="px-6 py-4"><button class="text-indigo-600"><i data-lucide="eye" class="w-4 h-4"></i></button></td>
-                </tr>
-            `).join('') : '<tr><td colspan="4" class="p-10 text-center">Data kosong</td></tr>';
-        }
+    function updateUI() {
+        document.getElementById('stat-total').innerText = allData.length;
+        const kks = allData.filter(w => w['Status Keluarga'] === 'Kepala Keluarga');
+        document.getElementById('stat-kk').innerText = kks.length;
+        renderCharts();
+        renderList(allData.slice(-5).reverse(), 'latest-list', false); 
+        filterWargaList();
+        filterKkList();
+    }
 
-        function renderKepalaKeluarga() {
-            const kk = dbWarga.filter(w => getProp(w, ['Status Hub Keluarga', 'Status Keluarga']) === 'Kepala Keluarga');
-            document.getElementById('kkContainer').innerHTML = kk.map(w => `
-                <div onclick="viewKKDetail('${w.No_KK || w['No KK']}')" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 card-shadow hover:border-indigo-400 cursor-pointer transition group">
-                    <div class="flex justify-between mb-4">
-                        <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold">${(w.Nama||"?").charAt(0)}</div>
-                        <span class="px-2 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-lg">KK</span>
-                    </div>
-                    <h4 class="font-extrabold text-slate-800 truncate">${w.Nama}</h4>
-                    <p class="text-xs text-slate-400 mb-4">No KK: ${w.No_KK || w['No KK']}</p>
-                    <div class="pt-4 border-t flex justify-between text-[10px] font-bold text-slate-500 uppercase">
-                        <span>Blok ${w.Blok}/${w.Nomer}</span><span>RT ${w.RT}</span>
-                    </div>
-                </div>
-            `).join('');
-        }
+    function resetWargaPage() { wargaPage = 1; }
+    function filterWargaList() {
+        const query = document.getElementById('search-warga').value.toLowerCase();
+        const rtFilter = document.getElementById('filter-rt').value;
+        const filtered = allData.filter(w => {
+            const matchSearch = (w.Nama || "").toLowerCase().includes(query) || (w.NIK || "").toString().includes(query) || (w.Blok || "").toLowerCase().includes(query);
+            const matchRT = rtFilter === "" || (w.RT && w.RT.toString() === rtFilter);
+            return matchSearch && matchRT;
+        });
+        const start = (wargaPage - 1) * PAGE_SIZE;
+        renderList(filtered.slice(start, start + PAGE_SIZE), 'all-warga-list', true);
+        renderPagination(filtered.length, wargaPage, 'warga-pagination', 'changeWargaPage');
+    }
 
-        function viewDetail(nik) {
-            const w = dbWarga.find(x => x.NIK == nik);
-            if (!w) return;
-            const foto = getProp(w, ['Foto', 'Photo', 'Link Foto']);
-            document.getElementById('modalTitle').innerText = w.Nama;
-            document.getElementById('detailContent').innerHTML = `
-                <div class="flex flex-col md:flex-row gap-6">
-                    <div class="md:w-1/3 aspect-[3/4] bg-slate-100 rounded-3xl overflow-hidden shadow-inner">
-                        ${foto && foto !== "-" && foto.startsWith('http') ? `<img src="${foto}" class="w-full h-full object-cover">` : `<div class="h-full flex items-center justify-center text-slate-300"><i data-lucide="user" class="w-16 h-16"></i></div>`}
-                    </div>
-                    <div class="md:w-2/3 space-y-4">
-                        <div class="grid grid-cols-2 gap-4 text-sm">
-                            <div><p class="text-[10px] font-bold text-slate-400 uppercase">NIK</p><p class="font-bold">${w.NIK}</p></div>
-                            <div><p class="text-[10px] font-bold text-slate-400 uppercase">Status Keluarga</p><p class="font-bold">${getProp(w, ['Status Hub Keluarga', 'Status Keluarga'])}</p></div>
-                            <div><p class="text-[10px] font-bold text-slate-400 uppercase">Kelamin</p><p class="font-bold">${getProp(w, ['Kelamin', 'Jenis Kelamin'])}</p></div>
-                            <div><p class="text-[10px] font-bold text-slate-400 uppercase">Pekerjaan</p><p class="font-bold">${getProp(w, ['Pekerjaan'])||'-'}</p></div>
-                        </div>
-                        <div class="p-4 bg-slate-50 rounded-2xl text-xs font-bold text-slate-600">Alamat: Blok ${w.Blok} No ${w.Nomer}, RT ${w.RT}</div>
-                        <a href="https://wa.me/${(getProp(w, ['No HP'])||'').replace(/\D/g,'')}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-3 rounded-2xl">Hubungi via WhatsApp</a>
-                    </div>
-                </div>
-            `;
-            openModal();
-        }
+    function changeWargaPage(step) { wargaPage += step; filterWargaList(); window.scrollTo(0, 0); }
 
-        function openModal() { document.getElementById('modalDetail').classList.remove('hidden'); document.body.classList.add('modal-open'); lucide.createIcons(); }
-        function closeModal() { document.getElementById('modalDetail').classList.add('hidden'); document.body.classList.remove('modal-open'); }
-        function setLoading(s, t) { const l = document.getElementById('loadingOverlay'); l.classList.toggle('hidden', !s); if(t) document.getElementById('loadingText').innerText = t; }
+    function resetKkPage() { kkPage = 1; }
+    function filterKkList() {
+        const query = document.getElementById('search-kk').value.toLowerCase();
+        const kks = allData.filter(w => w['Status Keluarga'] === 'Kepala Keluarga');
+        const filtered = kks.filter(kk => {
+            const noKk = (kk['No KK'] || kk['NO KK'] || "").toString();
+            return (kk.Nama || "").toLowerCase().includes(query) || noKk.includes(query);
+        });
+        const start = (kkPage - 1) * PAGE_SIZE;
+        renderKkList(filtered.slice(start, start + PAGE_SIZE));
+        renderPagination(filtered.length, kkPage, 'kk-pagination', 'changeKkPage');
+    }
 
-        function showPage(id) {
-            document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
-            document.getElementById('page-'+id).classList.remove('hidden');
-            document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === id));
-            if(id !== 'formWarga') refreshData();
-            lucide.createIcons();
-        }
+    function changeKkPage(step) { kkPage += step; filterKkList(); window.scrollTo(0, 0); }
 
-        // --- SUBMIT LOGIC (FIXED) ---
-        document.getElementById('addWargaForm').onsubmit = async (e) => {
-            e.preventDefault();
-            setLoading(true, "Mempersiapkan data...");
+    function renderPagination(totalItems, currentPage, targetId, callbackName) {
+        const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+        const container = document.getElementById(targetId);
+        if (totalPages <= 1) { container.innerHTML = ""; return; }
+        container.innerHTML = `
+            <button class="btn-page" ${currentPage === 1 ? 'disabled' : ''} onclick="${callbackName}(-1)"><span class="material-icons" style="font-size:14px">chevron_left</span></button>
+            <span class="text-[10px] font-black text-slate-400">Hal ${currentPage} / ${totalPages}</span>
+            <button class="btn-page" ${currentPage === totalPages ? 'disabled' : ''} onclick="${callbackName}(1)"><span class="material-icons" style="font-size:14px">chevron_right</span></button>
+        `;
+    }
 
-            const formData = new FormData(e.target);
-            const payload = {};
-            formData.forEach((value, key) => { payload[key] = value; });
+    function renderCharts() {
+        // Gender Chart
+        const priaCount = allData.filter(w => (w.Kelamin || "").toLowerCase().startsWith('l')).length;
+        const wanitaCount = allData.filter(w => (w.Kelamin || "").toLowerCase().startsWith('p')).length;
+        document.getElementById('label-pria').innerText = priaCount;
+        document.getElementById('label-wanita').innerText = wanitaCount;
+        
+        if (genderChart) genderChart.destroy();
+        genderChart = new Chart(document.getElementById('chartGender'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Laki-laki', 'Perempuan'],
+                datasets: [{ data: [priaCount, wanitaCount], backgroundColor: ['#818cf8', '#f472b6'], borderWidth: 0 }]
+            },
+            options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
+        });
 
-            // Handle Foto jika ada
-            const file = document.getElementById('fileUpload').files[0];
-            if (file) {
-                setLoading(true, "Mengunggah Foto...");
-                try {
-                    const reader = new FileReader();
-                    const base64Promise = new Promise((resolve) => {
-                        reader.onload = () => resolve(reader.result.split(',')[1]);
-                        reader.readAsDataURL(file);
-                    });
-                    
-                    const base64Data = await base64Promise;
-                    // Properti foto disesuaikan dengan Apps Script (payload.foto)
-                    payload.foto = "data:image/jpeg;base64," + base64Data; 
-                } catch (err) {
-                    console.error("Foto error", err);
+        // RT Chart (Distribusi Per RT)
+        const rtCounts = [0, 0, 0, 0]; // Index 0-3 untuk RT 1-4
+        allData.forEach(w => {
+            const rt = parseInt(w.RT);
+            if (rt >= 1 && rt <= 4) rtCounts[rt-1]++;
+        });
+
+        if (rtChart) rtChart.destroy();
+        rtChart = new Chart(document.getElementById('chartRT'), {
+            type: 'bar',
+            data: {
+                labels: ['RT 01', 'RT 02', 'RT 03', 'RT 04'],
+                datasets: [{
+                    label: 'Jumlah Warga',
+                    data: rtCounts,
+                    backgroundColor: ['#A5B4FC', '#FDA4AF', '#FCD34D', '#6EE7B7'],
+                    borderRadius: 12,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { display: false }, ticks: { font: { size: 9, weight: '800' } } },
+                    x: { grid: { display: false }, ticks: { font: { size: 9, weight: '800' } } }
                 }
-            } else {
-                payload.foto = "-";
             }
+        });
+    }
 
-            // Membungkus data ke dalam properti "payload" agar cocok dengan Apps Script:
-            // if (action === 'addWarga') return handleResponse(saveWarga(data.payload));
-            const requestData = {
-                action: "addWarga",
-                payload: payload
-            };
+    function renderList(data, target) {
+        const container = document.getElementById(target);
+        if (data.length === 0) { container.innerHTML = `<div class="p-8 text-center text-slate-300 font-bold text-xs uppercase">Tidak ada data</div>`; return; }
+        container.innerHTML = data.map(w => `
+            <div class="warga-card" onclick="showDetail('${w.NIK}')">
+                <div class="avatar ${(w.Kelamin || '').toLowerCase().startsWith('l') ? 'bg-indigo-400' : 'bg-pink-400'}">${(w.Nama || 'W')[0]}</div>
+                <div class="flex-1">
+                    <h4 class="text-xs font-extrabold text-slate-800">${w.Nama}</h4>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">NIK: ${w.NIK}</p>
+                </div>
+                <div class="text-right">
+                    <span class="text-[8px] font-black px-2 py-1 bg-slate-50 rounded-lg text-slate-400 uppercase">RT 0${w.RT || '-'}</span>
+                </div>
+            </div>
+        `).join('');
+    }
 
-            setLoading(true, "Menyimpan ke Google Sheets...");
-            try {
-                const response = await fetch(WEB_APP_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(requestData)
-                });
-                const result = await response.json();
+    function renderKkList(data) {
+        const container = document.getElementById('kk-list');
+        if (data.length === 0) { container.innerHTML = `<div class="p-8 text-center text-slate-300 font-bold text-xs uppercase">Tidak ada data</div>`; return; }
+        container.innerHTML = data.map(kk => `
+            <div class="warga-card" onclick="showFamily('${kk['No KK'] || kk['NO KK']}')">
+                <div class="avatar bg-slate-800"><span class="material-icons text-sm">home</span></div>
+                <div class="flex-1">
+                    <h4 class="text-xs font-extrabold text-slate-800">${kk.Nama}</h4>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">KK: ${kk['No KK'] || kk['NO KK']}</p>
+                </div>
+                <span class="material-icons text-slate-300">chevron_right</span>
+            </div>
+        `).join('');
+    }
 
-                if (result.success) {
-                    alert("Berhasil! Data warga telah tersimpan.");
-                    e.target.reset();
-                    document.getElementById('fileName').innerText = "PILIH FOTO";
-                    showPage('dashboard');
-                } else {
-                    alert("Gagal menyimpan: " + (result.message || "Terjadi kesalahan di server."));
-                }
-            } catch (error) {
-                console.error("Submit error", error);
-                alert("Kesalahan koneksi atau server.");
-            }
-            setLoading(false);
+    function showDetail(nik) {
+        const w = allData.find(x => x.NIK.toString() === nik.toString());
+        if(!w) return;
+        document.getElementById('btn-edit-trigger').onclick = () => openFormEdit(w);
+        const content = document.getElementById('detail-content');
+        
+        // Memastikan akses No HP sesuai dengan header backend (No HP)
+        const noHp = w['No HP'] || w['NO HP'] || '-';
+
+        let html = `
+            <div class="bg-slate-50 p-6 rounded-3xl flex flex-col items-center">
+                <div class="avatar w-20 h-20 text-2xl mb-4 ${(w.Kelamin || '').toLowerCase().startsWith('l') ? 'bg-indigo-400' : 'bg-pink-400'}">${(w.Nama || 'W')[0]}</div>
+                <h3 class="text-lg font-black text-slate-800 text-center">${w.Nama}</h3>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${w['Status Keluarga'] || 'Warga'}</p>
+            </div>
+            <div class="grid grid-cols-1 gap-1 mt-4">
+                ${renderDetailItem('NIK', w.NIK)}
+                ${renderDetailItem('No KK', w['No KK'] || w['NO KK'])}
+                ${renderDetailItem('Jenis Kelamin', w.Kelamin)}
+                ${renderDetailItem('Agama', w.Agama)}
+                ${renderDetailItem('Tempat, Tgl Lahir', `${w['Tempat Lahir'] || '-'}, ${w['Tanggal Lahir'] || '-'}`)}
+                ${renderDetailItem('Status Perkawinan', w['Status Perkawinan'])}
+                ${renderDetailItem('Status Tinggal', w['Status Tinggal'])}
+                ${renderDetailItem('Pekerjaan', w.Pekerjaan)}
+                ${renderDetailItem('No HP', noHp)}
+                <div class="bg-indigo-50/50 p-4 rounded-2xl mt-4">
+                    <p class="text-[8px] font-black text-indigo-400 uppercase mb-2">Informasi Alamat</p>
+                    <div class="space-y-3">
+                        <div><p class="text-[9px] font-bold text-slate-400 uppercase">Domisili</p><p class="text-xs font-bold text-slate-700">Blok ${w.Blok} No ${w.Nomer} RT 0${w.RT}</p></div>
+                        <div><p class="text-[9px] font-bold text-slate-400 uppercase">Alamat KTP</p><p class="text-xs font-bold text-slate-700">${w['Alamat KTP'] || '-'}</p></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        content.innerHTML = html;
+        document.getElementById('detail-modal').style.display = 'flex';
+    }
+
+    function renderDetailItem(label, val) {
+        return `<div class="px-4 py-3 border-b border-slate-50 flex justify-between items-center"><p class="text-[9px] font-black text-slate-400 uppercase">${label}</p><p class="text-xs font-bold text-slate-700">${val || '-'}</p></div>`;
+    }
+
+    function showFamily(noKk) {
+        const members = allData.filter(w => (w['No KK'] || w['NO KK'] || "").toString() === noKk.toString());
+        const content = document.getElementById('detail-content');
+        document.getElementById('btn-edit-trigger').style.display = 'none';
+        let html = `<h3 class="text-sm font-black text-slate-800 px-2 mb-4">Anggota Keluarga (KK: ${noKk})</h3>`;
+        members.forEach(m => {
+            html += `<div class="warga-card" onclick="showDetail('${m.NIK}')">
+                <div class="avatar ${(m.Kelamin || '').toLowerCase().startsWith('l') ? 'bg-indigo-400' : 'bg-pink-400'}">${(m.Nama || 'W')[0]}</div>
+                <div class="flex-1"><h4 class="text-xs font-extrabold text-slate-800">${m.Nama}</h4><p class="text-[9px] font-bold text-slate-400 uppercase">${m['Status Keluarga']}</p></div>
+            </div>`;
+        });
+        content.innerHTML = html;
+        document.getElementById('detail-modal').style.display = 'flex';
+    }
+
+    function closeDetail() { document.getElementById('detail-modal').style.display = 'none'; document.getElementById('btn-edit-trigger').style.display = 'block'; }
+    
+    function openFormAdd() { 
+        document.getElementById('form-warga').reset(); 
+        document.getElementById('f-original-nik').value = ""; 
+        document.getElementById('sync-ktp-check').checked = false;
+        syncKtp();
+        navigate('add'); 
+    }
+
+    function openFormEdit(w) {
+        closeDetail();
+        document.getElementById('f-original-nik').value = w.NIK;
+        document.getElementById('f-nik').value = w.NIK;
+        document.getElementById('f-kk').value = w['No KK'] || w['NO KK'];
+        document.getElementById('f-nama').value = w.Nama;
+        document.getElementById('f-kelamin').value = w.Kelamin;
+        document.getElementById('f-agama').value = w.Agama || "Islam";
+        document.getElementById('f-tempat').value = w['Tempat Lahir'] || "";
+        document.getElementById('f-tanggal').value = w['Tanggal Lahir'] || "";
+        document.getElementById('f-perkawinan').value = w['Status Perkawinan'] || "Belum kawin";
+        document.getElementById('f-tinggal').value = w['Status Tinggal'] || "Tetap";
+        document.getElementById('f-blok').value = w.Blok;
+        document.getElementById('f-nomer').value = w.Nomer;
+        document.getElementById('f-rt').value = w.RT;
+        document.getElementById('f-alamat-ktp').value = w['Alamat KTP'] || "";
+        document.getElementById('f-status-kel').value = w['Status Keluarga'] || "Kepala Keluarga";
+        document.getElementById('f-hp').value = w['No HP'] || w['NO HP'] || "";
+        document.getElementById('f-pekerjaan').value = w.Pekerjaan || "Belum/Tidak Bekerja";
+        
+        document.getElementById('sync-ktp-check').checked = false;
+        syncKtp();
+        navigate('add');
+    }
+
+    async function handleSaveWarga(e) {
+        e.preventDefault();
+        toggleLoading(true);
+        const payload = { 
+            originalNik: document.getElementById('f-original-nik').value, 
+            nik: document.getElementById('f-nik').value, 
+            kk: document.getElementById('f-kk').value, 
+            nama: document.getElementById('f-nama').value, 
+            kelamin: document.getElementById('f-kelamin').value, 
+            agama: document.getElementById('f-agama').value,
+            tempat: document.getElementById('f-tempat').value,
+            tanggal: document.getElementById('f-tanggal').value,
+            perkawinan: document.getElementById('f-perkawinan').value,
+            tinggal: document.getElementById('f-tinggal').value,
+            blok: document.getElementById('f-blok').value, 
+            nomer: document.getElementById('f-nomer').value, 
+            rt: document.getElementById('f-rt').value, 
+            alamatKTP: document.getElementById('f-alamat-ktp').value,
+            statusKel: document.getElementById('f-status-kel').value,
+            hp: document.getElementById('f-hp').value,
+            pekerjaan: document.getElementById('f-pekerjaan').value
         };
-
-        // Auth Mock
-        document.getElementById('loginForm').onsubmit = (e) => { e.preventDefault(); document.getElementById('loginPage').classList.add('hidden'); document.getElementById('mainApp').classList.remove('hidden'); refreshData(); };
-        const logout = () => location.reload();
-
-        window.onload = () => lucide.createIcons();
-    </script>
+        try {
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'saveWarga', args: [payload] }) });
+            navigate('dashboard');
+            refreshData();
+        } catch (err) { navigate('dashboard'); refreshData(); } finally { toggleLoading(false); }
+    }
+  </script>
 </body>
 </html>
