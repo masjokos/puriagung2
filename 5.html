@@ -56,7 +56,7 @@
     /* Dashboard UI */
     .stat-card { background: white; padding: 20px; border-radius: 24px; border: 1px solid #f1f5f9; position: relative; overflow: hidden; }
     
-    .bottom-nav { position: fixed; bottom: 20px; left: 20px; right: 20px; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); height: 70px; border-radius: 24px; display: flex; align-items: center; justify-content: space-around; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; }
+    .bottom-nav { position: fixed; bottom: 20px; left: 20px; right: 20px; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); height: 70px; border-radius: 24px; display: flex; align-items: center; justify-content: space-around; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 3000; } /* Tinggi z-index ditingkatkan agar selalu di atas modal */
     .nav-item { color: #94a3b8; display: flex; flex-direction: column; align-items: center; font-size: 9px; font-weight: 800; text-transform: uppercase; }
     .nav-item.active { color: var(--soft-indigo); }
     .btn-add-center { background: var(--soft-indigo); color: white; width: 56px; height: 56px; border-radius: 20px; display: flex; align-items: center; justify-content: center; transform: translateY(-20px); box-shadow: 0 8px 15px rgba(99,102,241,0.3); border: 4px solid white; }
@@ -69,7 +69,7 @@
     .btn-page { background: white; border: 1px solid #f1f5f9; padding: 8px 12px; border-radius: 12px; font-weight: 800; font-size: 10px; color: #64748b; text-transform: uppercase; }
     .btn-page:disabled { opacity: 0.3; }
 
-    #detail-modal { position: fixed; inset: 0; background: white; z-index: 2000; display: none; flex-direction: column; overflow-y: auto; }
+    #detail-modal { position: fixed; inset: 0; background: white; z-index: 2000; display: none; flex-direction: column; overflow-y: auto; padding-bottom: 100px; }
   </style>
 </head>
 <body>
@@ -84,7 +84,7 @@
   <div id="detail-modal">
     <div class="p-6">
         <div class="flex justify-between items-center mb-6">
-            <button onclick="closeDetail()" class="text-slate-400"><span class="material-icons">arrow_back_ios</span></button>
+            <button onclick="handleBackAction()" class="text-slate-400"><span class="material-icons">arrow_back_ios</span></button>
             <h2 class="text-lg font-black text-slate-800">Profil Lengkap</h2>
             <button id="btn-edit-trigger" class="text-indigo-500 font-bold text-sm">Edit</button>
         </div>
@@ -295,6 +295,13 @@
     let kkPage = 1;
     const PAGE_SIZE = 20;
 
+    // Tambahkan listener untuk mendeteksi tombol Back browser
+    window.addEventListener('popstate', function (event) {
+        if (document.getElementById('detail-modal').style.display === 'flex') {
+            closeDetail();
+        }
+    });
+
     function toggleLoading(s) { document.getElementById('loading-overlay').style.display = s ? 'flex' : 'none'; }
     
     function navigate(p) {
@@ -483,10 +490,13 @@
     function showDetail(nik) {
         const w = allData.find(x => x.NIK.toString() === nik.toString());
         if(!w) return;
+        
+        // PUSH STATE: Agar tombol back menutup modal, bukan logout
+        history.pushState({modal: true}, null, "");
+
         document.getElementById('btn-edit-trigger').onclick = () => openFormEdit(w);
         const content = document.getElementById('detail-content');
         
-        // Memastikan akses No HP sesuai dengan header backend (No HP)
         const noHp = w['No HP'] || w['NO HP'] || '-';
 
         let html = `
@@ -525,6 +535,10 @@
     function showFamily(noKk) {
         const members = allData.filter(w => (w['No KK'] || w['NO KK'] || "").toString() === noKk.toString());
         const content = document.getElementById('detail-content');
+        
+        // PUSH STATE: Agar tombol back menutup modal
+        history.pushState({modal: true}, null, "");
+
         document.getElementById('btn-edit-trigger').style.display = 'none';
         let html = `<h3 class="text-sm font-black text-slate-800 px-2 mb-4">Anggota Keluarga (KK: ${noKk})</h3>`;
         members.forEach(m => {
@@ -537,7 +551,19 @@
         document.getElementById('detail-modal').style.display = 'flex';
     }
 
-    function closeDetail() { document.getElementById('detail-modal').style.display = 'none'; document.getElementById('btn-edit-trigger').style.display = 'block'; }
+    // Fungsi untuk tombol kembali di UI
+    function handleBackAction() {
+        if (history.state && history.state.modal) {
+            history.back(); // Ini akan memicu popstate event dan memanggil closeDetail()
+        } else {
+            closeDetail();
+        }
+    }
+
+    function closeDetail() { 
+        document.getElementById('detail-modal').style.display = 'none'; 
+        document.getElementById('btn-edit-trigger').style.display = 'block'; 
+    }
     
     function openFormAdd() { 
         document.getElementById('form-warga').reset(); 
@@ -576,12 +602,10 @@
         e.preventDefault();
         toggleLoading(true);
 
-        // Ambil nilai individual alamat domisili
         const blok = document.getElementById('f-blok').value;
         const nomer = document.getElementById('f-nomer').value;
         const rt = document.getElementById('f-rt').value;
 
-        // Gabungkan menjadi string Alamat Tinggal (untuk Kolom N)
         const alamatTinggal = `Blok ${blok} No ${nomer} RT 0${rt}`;
 
         const payload = { 
@@ -598,7 +622,7 @@
             blok: blok, 
             nomer: nomer, 
             rt: rt, 
-            alamatTinggal: alamatTinggal, // DATA BARU UNTUK KOLOM N
+            alamatTinggal: alamatTinggal, 
             alamatKTP: document.getElementById('f-alamat-ktp').value,
             statusKel: document.getElementById('f-status-kel').value,
             hp: document.getElementById('f-hp').value,
