@@ -177,6 +177,21 @@
         <div id="latest-list"></div>
       </section>
 
+      <!-- Statistik Detail -->
+<section id="page-stats" class="page space-y-4">
+    <h2 class="text-xl font-black text-slate-800 mb-4">Demografi Warga</h2>
+    
+    <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+        <button onclick="switchStatTab('balita')" id="tab-balita" class="tab-btn active">Balita</button>
+        <button onclick="switchStatTab('lansia')" id="tab-lansia" class="tab-btn">Lansia</button>
+        <button onclick="switchStatTab('ultah')" id="tab-ultah" class="tab-btn">Ulang Tahun</button>
+    </div>
+
+    <div id="stat-list-container" class="space-y-3">
+        <!-- List akan diinjeksi di sini oleh JavaScript -->
+    </div>
+</section>
+      
       <!-- Daftar Warga -->
       <section id="page-warga" class="page">
         <h2 class="text-xl font-black text-slate-800 mb-4">Daftar Warga</h2>
@@ -286,6 +301,7 @@
         <button onclick="navigate('warga')" id="nav-warga" class="nav-item"><span class="material-symbols-rounded">group_search</span><span>Warga</span></button>
         <button onclick="navigate('add'); closeDetail();" class="btn-add-center"><span class="material-icons">add</span></button>
         <button onclick="navigate('kk')" id="nav-kk" class="nav-item"><span class="material-symbols-rounded">diversity_1</span><span>Keluarga</span></button>
+        <button onclick="navigate('stats')" id="nav-stats" class="nav-item"><span class="material-symbols-rounded">demography</span><span>Statistik</span></button>
         <button onclick="refreshData(); closeDetail();" class="nav-item"><span class="material-symbols-rounded">directory_sync</span><span>Sync</span></button>
     </nav>
   </div>
@@ -360,6 +376,65 @@
         renderList(allData.slice(-5).reverse(), 'latest-list'); 
         filterWargaList(); filterKkList();
     }
+
+    // --- Statistik Page Logic ---
+function switchStatTab(tab) {
+    currentStatTab = tab;
+    // Mengatur status aktif pada tombol tab
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'tab-'+tab));
+    const listContainer = document.getElementById('stat-list-container');
+    listContainer.innerHTML = "";
+
+    const today = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(today.getDate() + 7);
+
+    let filtered = [];
+
+    allData.forEach(w => {
+        if (!w['Tanggal Lahir']) return;
+        const bDate = new Date(w['Tanggal Lahir']);
+        if (isNaN(bDate)) return;
+
+        // Hitung Umur
+        let age = today.getFullYear() - bDate.getFullYear();
+        const m = today.getMonth() - bDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < bDate.getDate())) age--;
+
+        if (tab === 'balita' && age < 5) {
+            w._displayAge = age + " Thn";
+            filtered.push(w);
+        } else if (tab === 'lansia' && age >= 55) {
+            w._displayAge = age + " Thn";
+            filtered.push(w);
+        } else if (tab === 'ultah') {
+            const bThisYear = new Date(today.getFullYear(), bDate.getMonth(), bDate.getDate());
+            if (bThisYear >= new Date(today.setHours(0,0,0,0)) && bThisYear <= nextWeek) {
+                w._displayAge = bDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+                filtered.push(w);
+            }
+        }
+    });
+
+    // Render hasil filter ke UI
+    if (filtered.length === 0) {
+        listContainer.innerHTML = `<div class="p-10 text-center text-slate-300 font-bold text-xs uppercase tracking-widest">Tidak ada data</div>`;
+        return;
+    }
+
+    listContainer.innerHTML = filtered.map(w => `
+        <div class="warga-card" onclick="showDetail('${w.NIK}')">
+            <div class="avatar ${w.Kelamin.startsWith('L') ? 'bg-indigo-400' : 'bg-pink-400'}">${w.Nama[0]}</div>
+            <div class="flex-1">
+                <h4 class="text-xs font-extrabold text-slate-800">${w.Nama}</h4>
+                <p class="text-[9px] font-bold text-slate-400 uppercase">Blok ${w.Blok} No ${w.Nomer} • RT 0${w.RT}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-[10px] font-black text-indigo-500">${w._displayAge}</p>
+            </div>
+        </div>
+    `).join('');
+}
 
     function filterWargaList() {
         const query = document.getElementById('search-warga').value.toLowerCase();
