@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>E-Warga - Dashboard & Management</title>
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/masjokos/puriagung2/refs/heads/main/puriagung2.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <!-- Load Chart.js -->
@@ -56,7 +57,6 @@
     /* Dashboard UI */
     .stat-card { background: white; padding: 20px; border-radius: 24px; border: 1px solid #f1f5f9; position: relative; overflow: hidden; }
     
-    /* Z-index ditingkatkan ke 4000 agar selalu di atas segalanya */
     .bottom-nav { position: fixed; bottom: 20px; left: 20px; right: 20px; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); height: 70px; border-radius: 24px; display: flex; align-items: center; justify-content: space-around; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 4000; } 
     .nav-item { color: #94a3b8; display: flex; flex-direction: column; align-items: center; font-size: 9px; font-weight: 800; text-transform: uppercase; border: none; background: none; outline: none; }
     .nav-item.active { color: var(--soft-indigo); }
@@ -95,6 +95,7 @@
 
   <div id="auth-container">
     <div class="login-card">
+        <img src="https://raw.githubusercontent.com/masjokos/puriagung2/refs/heads/main/puriagung2.png" alt="Logo" class="w-20 h-20 mx-auto mb-4 object-contain">
         <h1 class="text-xl font-extrabold text-slate-800 mb-8">E-Warga Login</h1>
         <form onsubmit="handleLogin(event)">
             <div class="input-group"><input type="text" id="login-user" placeholder="Username" class="modern-input" required><span class="material-icons">person</span></div>
@@ -106,9 +107,12 @@
 
   <div id="main-app">
     <header class="p-6 flex justify-between items-center">
-        <div>
-            <p class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Selamat Datang</p>
-            <h1 id="welcome-text" class="text-xl font-extrabold text-slate-800">Halo!</h1>
+        <div class="flex items-center gap-3">
+            <img src="https://raw.githubusercontent.com/masjokos/puriagung2/refs/heads/main/puriagung2.png" alt="Logo" class="w-10 h-10 object-contain">
+            <div>
+                <p class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Selamat Datang</p>
+                <h1 id="welcome-text" class="text-xl font-extrabold text-slate-800 leading-tight">Halo!</h1>
+            </div>
         </div>
         <button onclick="logout()" class="text-slate-300 bg-none border-none"><span class="material-icons">logout</span></button>
     </header>
@@ -277,7 +281,9 @@
 
     // Handle back button on mobile
     window.addEventListener('popstate', function (event) {
-        if (document.getElementById('detail-modal').style.display === 'flex') {
+        if (event.state && event.state.modal) {
+            // Keep open
+        } else if (document.getElementById('detail-modal').style.display === 'flex') {
             closeDetailSilent();
         }
     });
@@ -285,9 +291,7 @@
     function toggleLoading(s) { document.getElementById('loading-overlay').style.display = s ? 'flex' : 'none'; }
     
     function navigate(p) {
-      // Jika menavigasi lewat menu, otomatis tutup detail modal
       closeDetailSilent();
-      
       document.querySelectorAll('.page').forEach(e => e.classList.toggle('active', e.id === 'page-'+p));
       document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('active', e.id === 'nav-'+p));
       window.scrollTo(0, 0);
@@ -352,6 +356,7 @@
         renderPagination(filtered.length, wargaPage, 'warga-pagination', 'changeWargaPage');
     }
 
+    function resetWargaPage() { wargaPage = 1; }
     function changeWargaPage(step) { wargaPage += step; filterWargaList(); window.scrollTo(0, 0); }
 
     function filterKkList() {
@@ -364,6 +369,7 @@
         renderPagination(filtered.length, kkPage, 'kk-pagination', 'changeKkPage');
     }
 
+    function resetKkPage() { kkPage = 1; }
     function changeKkPage(step) { kkPage += step; filterKkList(); window.scrollTo(0, 0); }
 
     function renderPagination(totalItems, currentPage, targetId, callbackName) {
@@ -429,7 +435,6 @@
         history.pushState({modal: true}, null, "");
         document.getElementById('btn-edit-trigger').onclick = () => openFormEdit(w);
         
-        // Mempersiapkan Link WA
         const rawHp = (w['No HP'] || w['NO HP'] || "").toString();
         let waLink = "";
         if (rawHp) {
@@ -492,7 +497,6 @@
         document.getElementById('btn-edit-trigger').style.display = 'block'; 
     }
 
-    // Fungsi tutup tanpa memicu history back (digunakan saat pindah menu)
     function closeDetailSilent() {
         document.getElementById('detail-modal').style.display = 'none'; 
         document.getElementById('btn-edit-trigger').style.display = 'block'; 
@@ -523,8 +527,6 @@
 
     async function handleSaveWarga(e) {
         e.preventDefault(); toggleLoading(true);
-        
-        // Buat string alamat tinggal secara otomatis
         const blok = document.getElementById('f-blok').value;
         const nomer = document.getElementById('f-nomer').value;
         const rt = document.getElementById('f-rt').value;
@@ -545,7 +547,7 @@
             nomer: nomer, 
             rt: rt, 
             alamatKTP: document.getElementById('f-alamat-ktp').value,
-            alamatTinggal: alamatTinggalStr, // Pastikan ini dikirim
+            alamatTinggal: alamatTinggalStr,
             statusKel: document.getElementById('f-status-kel').value,
             hp: document.getElementById('f-hp').value,
             pekerjaan: document.getElementById('f-pekerjaan').value
