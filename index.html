@@ -410,7 +410,7 @@
         genderChart = new Chart(document.getElementById('chartGender'), {
             type: 'doughnut',
             data: { datasets: [{ data: [priaCount, wanitaCount], backgroundColor: ['#818cf8', '#f472b6'], borderWidth: 0 }] },
-            options: { cutout: '75%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
+            options: { cutout: '50%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
         });
 
         const rtCounts = [0, 0, 0, 0];
