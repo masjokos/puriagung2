@@ -128,7 +128,7 @@
             <img src="https://raw.githubusercontent.com/masjokos/puriagung2/refs/heads/main/logopuriagung2.png" alt="Logo" class="w-10 h-10 object-contain">
             <div>
                 <p class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Puri Agung 2</p>
-                <h1 id="welcome-text" class="text-xl font-extrabold text-slate-800 leading-tight">Halo !</h1>
+                <h1 id="welcome-text" class="text-xl font-extrabold text-slate-800 leading-tight">Halo0 !</h1>
                 <h1 class="text-xl font-extrabold text-slate-800 leading-tight">E-WARGA RW6</h1>
 
             </div>
@@ -335,7 +335,7 @@
         const res = await fetch(`${API_URL}?action=checkLogin&args=${JSON.stringify([u, p])}`);
         const result = await res.json();
         if(result.success) {
-            document.getElementById('welcome-text').innerText = `Halo ${u}! 👋`;
+           <!-- document.getElementById('welcome-text').innerText = `Halo ${u}! 👋`; -->
             document.getElementById('auth-container').style.display = 'none';
             document.getElementById('main-app').style.display = 'flex';
             refreshData();
