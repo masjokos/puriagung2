@@ -338,6 +338,26 @@
     let wargaPage = 1, kkPage = 1;
     const PAGE_SIZE = 20;
 
+    // --- SESSION MANAGEMENT (SINKRONISASI REFRESH) ---
+    window.onload = function() {
+        const savedSession = localStorage.getItem('ewarga_session_data');
+        if (savedSession) {
+            try {
+                const sessionData = JSON.parse(savedSession);
+                const now = new Date().getTime();
+                // Masa berlaku sesi: 24 jam
+                if (now - sessionData.timestamp < 24 * 60 * 60 * 1000) {
+                    enterApp(sessionData.username);
+                    refreshData();
+                } else {
+                    localStorage.removeItem('ewarga_session_data');
+                }
+            } catch (e) {
+                localStorage.removeItem('ewarga_session_data');
+            }
+        }
+    };
+
     // Handle back button on mobile
     window.addEventListener('popstate', function (event) {
         if (event.state && event.state.modal) {
@@ -368,22 +388,41 @@
     }
 
     async function handleLogin(e) {
-      e.preventDefault(); toggleLoading(true);
-      const u = document.getElementById('login-user').value;
-      const p = document.getElementById('login-pass').value;
-      try {
-        const res = await fetch(`${API_URL}?action=checkLogin&args=${JSON.stringify([u, p])}`);
-        const result = await res.json();
-        if(result.success) {
-           <!-- document.getElementById('welcome-text').innerText = `Halo ${u}! 👋`; -->
-            document.getElementById('auth-container').style.display = 'none';
-            document.getElementById('main-app').style.display = 'flex';
-            refreshData();
-        } else { alert("Login Gagal"); }
-      } catch (err) { alert("Error"); } finally { toggleLoading(false); }
+        e.preventDefault();
+        toggleLoading(true);
+        const u = document.getElementById('login-user').value;
+        const p = document.getElementById('login-pass').value;
+        
+        try {
+            const res = await fetch(`${API_URL}?action=checkLogin&args=${JSON.stringify([u, p])}`);
+            const result = await res.json();
+            if (result.success) {
+                // SIMPAN DATA KE LOCALSTORAGE SAAT LOGIN BERHASIL
+                const sessionData = {
+                    username: u,
+                    timestamp: new Date().getTime()
+                };
+                localStorage.setItem('ewarga_session_data', JSON.stringify(sessionData));
+                
+                enterApp(u);
+                refreshData();
+            } else {
+                alert("Login gagal! Periksa username/password.");
+            }
+        } catch (err) {
+            alert("Terjadi kesalahan koneksi ke server.");
+        } finally {
+            toggleLoading(false);
+        }
     }
 
-    function logout() { location.reload(); }
+    function logout() {
+        if (confirm("Apakah Anda ingin keluar?")) {
+            // HAPUS DATA DARI LOCALSTORAGE SAAT LOGOUT
+            localStorage.removeItem('ewarga_session_data');
+            location.reload();
+        }
+    }
 
     async function refreshData() {
       toggleLoading(true);
