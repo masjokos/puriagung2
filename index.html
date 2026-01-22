@@ -358,6 +358,8 @@
     let genderChart, rtChart;
     let wargaPage = 1, kkPage = 1;
     const PAGE_SIZE = 20;
+    let currentStatTab = 'balita';
+
 
     // Handle back button on mobile
     window.addEventListener('popstate', function (event) {
@@ -375,8 +377,9 @@
       document.querySelectorAll('.page').forEach(e => e.classList.toggle('active', e.id === 'page-'+p));
       document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('active', e.id === 'nav-'+p));
       window.scrollTo(0, 0);
+      if (p === 'stats') {switchStatTab(currentStatTab);}
     }
-
+    
     function syncKtp() {
         const isChecked = document.getElementById('sync-ktp-check').checked;
         const target = document.getElementById('f-alamat-ktp');
@@ -416,6 +419,8 @@ function logout() {
         const res = await fetch(`${API_URL}?action=getAllWarga`);
         allData = await res.json();
         updateUI();
+        switchStatTab(currentStatTab);
+
       } catch (e) { console.error(e); } finally { toggleLoading(false); }
     }
 
@@ -429,6 +434,7 @@ function logout() {
 
     // --- Statistik Page Logic ---
 function switchStatTab(tab) {
+    if (!allData || allData.length === 0) return;
     currentStatTab = tab;
     // Mengatur status aktif pada tombol tab
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'tab-'+tab));
