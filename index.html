@@ -566,6 +566,13 @@ function pastelColorFromString(str) {
   }
   return colors[Math.abs(hash) % colors.length];
 }
+  
+  function countFamilyMembers(noKk) {
+  return allData.filter(w =>
+    (w['No KK'] || w['NO KK'] || '').toString() === noKk.toString()
+  ).length;
+}
+
     
   function renderKkList(data) {
   const container = document.getElementById('kk-list');
@@ -576,25 +583,37 @@ function pastelColorFromString(str) {
 
   container.innerHTML = data.map(kk => {
     const nama = kk.Nama || '';
+    const noKk = kk['No KK'] || kk['NO KK'];
     const inisial = getInitials(nama);
     const warna = pastelColorFromString(nama);
+    const jumlah = countFamilyMembers(noKk);
 
     return `
-      <div class="warga-card" onclick="showFamily('${kk['No KK'] || kk['NO KK']}')">
+      <div class="warga-card relative" onclick="showFamily('${noKk}')">
+        
+        <!-- Avatar Inisial -->
         <div class="avatar" style="background:${warna}; color:#1e293b;">
           <span class="text-xs font-black">${inisial}</span>
         </div>
+
+        <!-- Info KK -->
         <div class="flex-1">
           <h4 class="text-xs font-extrabold text-slate-800">${nama}</h4>
-          <p class="text-[9px] font-bold text-slate-400">
-            KK: ${kk['No KK'] || kk['NO KK']}
-          </p>
+          <p class="text-[9px] font-bold text-slate-400">KK: ${noKk}</p>
         </div>
-        <span class="material-icons text-slate-300">chevron_right</span>
+
+        <!-- Badge Jumlah Anggota -->
+        <div class="px-2 py-1 rounded-full text-[9px] font-black
+                    bg-indigo-100 text-indigo-600">
+          ${jumlah} org
+        </div>
+
+        <span class="material-icons text-slate-300 ml-1">chevron_right</span>
       </div>
     `;
   }).join('');
 }
+
 
 
     function showDetail(nik) {
