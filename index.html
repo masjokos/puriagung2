@@ -416,15 +416,21 @@ function logout() {
 }
 
     async function refreshData() {
-      toggleLoading(true);
-      try {
-        const res = await fetch(`${API_URL}?action=getAllWarga`);
-        allData = await res.json();
-        updateUI();
-        switchStatTab(currentStatTab);
+  try {
+    const res = await fetch(`${API_URL}?action=getAllWarga`);
+    const rawData = await res.json();
 
-      } catch (e) { console.error(e); } finally { toggleLoading(false); }
-    }
+    // 🔐 FILTER BERDASARKAN ROLE
+    allData = getFilteredDataByRole(rawData);
+
+    renderWargaList(allData);
+    renderKkList(allData);
+
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 
     function updateUI() {
         document.getElementById('stat-total').innerText = allData.length;
