@@ -401,6 +401,8 @@
         if(result.success) {
            <!-- document.getElementById('welcome-text').innerText = `Halo ${u}! 👋`; -->
             localStorage.setItem('ewarga_user', u);
+            localStorage.setItem('ewarga_role', result.role);
+            localStorage.setItem('ewarga_rt', result.rt);
             document.getElementById('auth-container').style.display = 'none';
             document.getElementById('main-app').style.display = 'flex';
             refreshData();
@@ -432,6 +434,21 @@ function logout() {
         filterWargaList(); filterKkList();
     }
 
+    // --- pengaturan role user ---
+    function getFilteredDataByRole(data) {
+  const role = localStorage.getItem('ewarga_role');
+  const rt = localStorage.getItem('ewarga_rt');
+
+  if (role === 'admin') return data;
+
+  if (role === 'petugas' && rt) {
+    return data.filter(w => w.RT?.toString() === rt);
+  }
+
+  return data;
+}
+
+    
     // --- Statistik Page Logic ---
 function switchStatTab(tab) {
     if (!allData || allData.length === 0) return;
