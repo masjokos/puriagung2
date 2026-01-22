@@ -680,7 +680,6 @@ function switchStatTab(tab) {
         } catch (err) { navigate('dashboard'); refreshData(); } finally { toggleLoading(false); }
     }
 
-    <script>
   function checkLoginState() {
     const user = localStorage.getItem('ewarga_user');
     if (user) {
@@ -692,7 +691,6 @@ function switchStatTab(tab) {
 
   // Jalankan saat halaman pertama kali dibuka
   document.addEventListener('DOMContentLoaded', checkLoginState);
-</script>
 
   </script>
 </body>
