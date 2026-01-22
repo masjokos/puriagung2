@@ -539,17 +539,63 @@ function switchStatTab(tab) {
         `).join('');
     }
 
-    function renderKkList(data) {
-        const container = document.getElementById('kk-list');
-        if (data.length === 0) { container.innerHTML = `<div class="p-8 text-center text-slate-300 font-bold text-xs">Kosong</div>`; return; }
-        container.innerHTML = data.map(kk => `
-            <div class="warga-card" onclick="showFamily('${kk['No KK'] || kk['NO KK']}')">
-                <div class="avatar bg-slate-800"><span class="material-icons text-sm">home</span></div>
-                <div class="flex-1"><h4 class="text-xs font-extrabold text-slate-800">${kk.Nama}</h4><p class="text-[9px] font-bold text-slate-400">KK: ${kk['No KK'] || kk['NO KK']}</p></div>
-                <span class="material-icons text-slate-300">chevron_right</span>
-            </div>
-        `).join('');
-    }
+    // Ambil inisial nama (maks 2 huruf)
+function getInitials(name) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+// Warna pastel konsisten berdasarkan teks (nama / no KK)
+function pastelColorFromString(str) {
+  const colors = [
+    '#A5B4FC', // indigo pastel
+    '#FBCFE8', // pink pastel
+    '#BFDBFE', // blue pastel
+    '#BBF7D0', // green pastel
+    '#FDE68A', // yellow pastel
+    '#FED7AA', // orange pastel
+    '#E9D5FF', // purple pastel
+    '#BAE6FD'  // sky pastel
+  ];
+
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+    
+  function renderKkList(data) {
+  const container = document.getElementById('kk-list');
+  if (data.length === 0) {
+    container.innerHTML = `<div class="p-8 text-center text-slate-300 font-bold text-xs">Kosong</div>`;
+    return;
+  }
+
+  container.innerHTML = data.map(kk => {
+    const nama = kk.Nama || '';
+    const inisial = getInitials(nama);
+    const warna = pastelColorFromString(nama);
+
+    return `
+      <div class="warga-card" onclick="showFamily('${kk['No KK'] || kk['NO KK']}')">
+        <div class="avatar" style="background:${warna}; color:#1e293b;">
+          <span class="text-xs font-black">${inisial}</span>
+        </div>
+        <div class="flex-1">
+          <h4 class="text-xs font-extrabold text-slate-800">${nama}</h4>
+          <p class="text-[9px] font-bold text-slate-400">
+            KK: ${kk['No KK'] || kk['NO KK']}
+          </p>
+        </div>
+        <span class="material-icons text-slate-300">chevron_right</span>
+      </div>
+    `;
+  }).join('');
+}
+
 
     function showDetail(nik) {
         const w = allData.find(x => x.NIK.toString() === nik.toString());
