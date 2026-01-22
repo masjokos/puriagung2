@@ -376,6 +376,7 @@
         const result = await res.json();
         if(result.success) {
            <!-- document.getElementById('welcome-text').innerText = `Halo ${u}! 👋`; -->
+            localStorage.setItem('ewarga_user', u);
             document.getElementById('auth-container').style.display = 'none';
             document.getElementById('main-app').style.display = 'flex';
             refreshData();
@@ -383,7 +384,10 @@
       } catch (err) { alert("Error"); } finally { toggleLoading(false); }
     }
 
-    function logout() { location.reload(); }
+function logout() {
+  localStorage.removeItem('ewarga_user');
+  location.reload();
+}
 
     async function refreshData() {
       toggleLoading(true);
@@ -675,6 +679,21 @@ function switchStatTab(tab) {
             navigate('dashboard'); refreshData();
         } catch (err) { navigate('dashboard'); refreshData(); } finally { toggleLoading(false); }
     }
+
+    <script>
+  function checkLoginState() {
+    const user = localStorage.getItem('ewarga_user');
+    if (user) {
+      document.getElementById('auth-container').style.display = 'none';
+      document.getElementById('main-app').style.display = 'flex';
+      refreshData();
+    }
+  }
+
+  // Jalankan saat halaman pertama kali dibuka
+  document.addEventListener('DOMContentLoaded', checkLoginState);
+</script>
+
   </script>
 </body>
 </html>
