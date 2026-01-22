@@ -239,17 +239,39 @@
       </section>
 
       <!-- Data Keluarga -->
-      <section id="page-kk" class="page">
-        <h2 class="text-xl font-black text-slate-800 mb-4">Data Kepala Keluarga</h2>
-        <div class="mb-4 space-y-3">
-            <div class="input-group">
-                <input type="text" id="search-kk" placeholder="Cari Nama KK atau No KK..." class="modern-input" oninput="resetKkPage(); filterKkList()">
-                <span class="material-icons">search</span>
-            </div>
-        </div>
-        <div id="kk-list"></div>
-        <div id="kk-pagination" class="pagination-controls"></div>
-      </section>
+<!-- Data Keluarga -->
+<section id="page-kk" class="page">
+  <h2 class="text-xl font-black text-slate-800 mb-4">Data Kepala Keluarga</h2>
+
+  <div class="mb-4 space-y-3">
+    <!-- Search -->
+    <div class="input-group">
+      <input type="text" id="search-kk"
+             placeholder="Cari Nama KK atau No KK..."
+             class="modern-input"
+             oninput="resetKkPage(); filterKkList()">
+      <span class="material-icons">search</span>
+    </div>
+
+    <!-- Filter RT -->
+    <div class="input-group !mb-0">
+      <select id="filter-kk-rt"
+              class="modern-input !pl-10"
+              onchange="resetKkPage(); filterKkList()">
+        <option value="">Semua RT</option>
+        <option value="1">RT 01</option>
+        <option value="2">RT 02</option>
+        <option value="3">RT 03</option>
+        <option value="4">RT 04</option>
+      </select>
+      <span class="material-icons">filter_list</span>
+    </div>
+  </div>
+
+  <div id="kk-list"></div>
+  <div id="kk-pagination" class="pagination-controls"></div>
+</section>
+
 
       <!-- Form -->
       <section id="page-add" class="page">
@@ -482,14 +504,30 @@ function switchStatTab(tab) {
     function changeWargaPage(step) { wargaPage += step; filterWargaList(); window.scrollTo(0, 0); }
 
     function filterKkList() {
-        const query = document.getElementById('search-kk').value.toLowerCase();
-        const filtered = allData.filter(w => w['Status Keluarga'] === 'Kepala Keluarga').filter(kk => {
-            return (kk.Nama || "").toLowerCase().includes(query) || (kk['No KK'] || kk['NO KK'] || "").toString().includes(query);
-        });
-        const start = (kkPage - 1) * PAGE_SIZE;
-        renderKkList(filtered.slice(start, start + PAGE_SIZE));
-        renderPagination(filtered.length, kkPage, 'kk-pagination', 'changeKkPage');
-    }
+  const query = document.getElementById('search-kk').value.toLowerCase();
+  const rtFilter = document.getElementById('filter-kk-rt').value;
+
+  const filtered = allData
+    // hanya Kepala Keluarga
+    .filter(w => w['Status Keluarga'] === 'Kepala Keluarga')
+    // search nama / no KK
+    .filter(kk => {
+      const matchSearch =
+        (kk.Nama || '').toLowerCase().includes(query) ||
+        (kk['No KK'] || kk['NO KK'] || '').toString().includes(query);
+
+      const matchRT =
+        rtFilter === '' ||
+        (kk.RT && kk.RT.toString() === rtFilter);
+
+      return matchSearch && matchRT;
+    });
+
+  const start = (kkPage - 1) * PAGE_SIZE;
+  renderKkList(filtered.slice(start, start + PAGE_SIZE));
+  renderPagination(filtered.length, kkPage, 'kk-pagination', 'changeKkPage');
+}
+
 
     function resetKkPage() { kkPage = 1; }
     function changeKkPage(step) { kkPage += step; filterKkList(); window.scrollTo(0, 0); }
