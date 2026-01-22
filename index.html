@@ -438,13 +438,10 @@ function logout() {
     function getFilteredDataByRole(data) {
   const role = localStorage.getItem('ewarga_role');
   const rt = localStorage.getItem('ewarga_rt');
-
-  if (role === 'admin') return data;
-
+  if (role === 'admin' || role === 'lihat') return data;
   if (role === 'petugas' && rt) {
     return data.filter(w => w.RT?.toString() === rt);
   }
-
   return data;
 }
 
